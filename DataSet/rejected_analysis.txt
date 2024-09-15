@@ -1,0 +1,43 @@
+Data types for ./DataSet/filtered_rejected_2013_to_2018Q.csv:
+Amount Requested        float64
+Application Date         object
+Loan Title               object
+Risk_Score              float64
+Debt-To-Income Ratio     object
+Zip Code                 object
+State                    object
+Employment Length        object
+Policy Code             float64
+
+Number of null values in ./DataSet/filtered_rejected_2013_to_2018Q.csv:
+Amount Requested               0
+Application Date               0
+Loan Title                  1290
+Risk_Score              18473692
+Debt-To-Income Ratio           0
+Zip Code                     271
+State                          1
+Employment Length         943218
+Policy Code                  918
+
+Percentage of null values in ./DataSet/filtered_rejected_2013_to_2018Q.csv:
+Amount Requested         0.000000
+Application Date         0.000000
+Loan Title               0.004797
+Risk_Score              68.695027
+Debt-To-Income Ratio     0.000000
+Zip Code                 0.001008
+State                    0.000004
+Employment Length        3.507387
+Policy Code              0.003414
+Dropped columns (0):
+
+
+
+Dropped rows with all null values: 0
+Dropped rows with fewer than 4 non-null values: 0
+
+Sample of dropped rows:
+Empty DataFrame
+Columns: [Amount Requested, Application Date, Loan Title, Risk_Score, Debt-To-Income Ratio, Zip Code, State, Employment Length, Policy Code]
+Index: []
