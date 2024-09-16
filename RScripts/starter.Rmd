@@ -19,5 +19,14 @@ output:
 library(ezids)
 library(data.table)
 ```
+```{r}
+source("./HelperFunctions/fetchSubset.R")
+df_location = "../DataSet/cleaned_accepted_2013_to_2018Q4.csv"
+col_names = c("loan_status","zip_code","debt_settlement_flag")
+nrows = c(500,2157800)  # First 100 rows
+result_df = fetch_subset(df_location, col_names,nrows)
+
+nrow(result_df)
+```
 
 

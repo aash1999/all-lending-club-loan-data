@@ -20,4 +20,4 @@ print(result)
 
 | Function Name | How to Import                          | Parameters                     | Return Type |        Description                               |
 |---------------|----------------------------------------|---------------------------------|-------------|-------------------------------------------|
-| `my_function` | `source('path_to_helper/my_function.R')` | `x`: numeric (required)         | numeric     | Multiplies the input value by 2.          |
+| `fetch_subset` | `source("./HelperFunctions/fetchSubset.R")` | `df_location`: char (required) <br>`col_names`: vector (required) <br> `nrows` : vector (default c(1,-1))    | `data.table()`     | Fetches the subset from large CSV files          |
