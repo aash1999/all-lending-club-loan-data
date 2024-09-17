@@ -20,4 +20,4 @@ print(result)
 
 | Function Name | How to Import                          | Parameters                     | Return Type |        Description                               |
 |---------------|----------------------------------------|---------------------------------|-------------|-------------------------------------------|
-| `fetch_subset` | `source("./HelperFunctions/fetchSubset.R")` | `df_location`: char (required) <br>`col_names`: vector (required) <br> `nrows` : vector (default c(1,-1))    | `data.table()`     | Fetches the subset from large CSV files          |
+| `fetch_subset` | `source("./HelperFunctions/fetchSubset.R")` | `df_location`: char (required) <br>`col_names`: vector (required) <br> `nrows` : vector (default c(1,-1))  <br> `chunk_size` : num (default 1e5)  | `data.table()`     | Fetches the subset from large CSV files          |

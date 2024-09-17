@@ -16,6 +16,7 @@ library(data.table)
   #          - c(m, n): Fetch rows from `m` to `n` (both inclusive). DEFAULT
   #          - c(1, -1): Fetch all rows from the first to the last.
   #          Default is `c(1, -1)` to fetch all rows.
+  #   chunk_size: Here's the revised version: The size of a single chunk. If the chunk size is too large, you might encounter a memory error. The default is 1e5.
   #
   # Returns:
   #   A `data.table` containing the subset of rows and columns from the CSV file.
@@ -27,11 +28,8 @@ library(data.table)
   #   nrows = c(1, 100)  # Fetch rows 1 to 100
   #   result_df = fetch_subset(df_location, col_names, nrows)
 
-fetch_subset <- function(df_location, col_names, nrows = c(1, -1)) {
-  
-  # Chunk size set to 1e5 for large datasets
-  chunk_size <- 1e5
-  
+fetch_subset <- function(df_location, col_names, nrows = c(1, -1), chunk_size = 1e5) {
+    
   # Step 1: Read the first chunk to determine column indices and header information
   first_chunk <- fread(df_location, nrows = chunk_size, header = TRUE)
   all_col_names <- names(first_chunk)  # Extract all column names
