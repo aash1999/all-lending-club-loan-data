@@ -61,23 +61,3 @@
 | Git Setup                     | Singh, Aakash      | Main                | ✅ Done           
 | Invistigate Dataset           | Singh, Aakash      | singh-aakash        | 🔄 In-Progress
 
-## Contributors
-
-<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
-<!-- prettier-ignore-start -->
-<!-- markdownlint-disable -->
-<table>
-  <tbody>
-    <tr>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/aash1999"><img src="https://avatars.githubusercontent.com/u/39939476?v=4?s=100" width="100px;" alt="Aakash Singh"/><br /><sub><b>Aakash Singh</b></sub></a><br /><a href="#code-aash1999" title="Code">💻</a> <a href="#doc-aash1999" title="Documentation">📖</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/ugantulga"><img src="https://avatars.githubusercontent.com/u/171556489?v=4?s=100" width="100px;" alt="ugantulga"/><br /><sub><b>ugantulga</b></sub></a><br /><a href="#code-ugantulga" title="Code">💻</a> <a href="#doc-ugantulga" title="Documentation">📖</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/msyago"><img src="https://avatars.githubusercontent.com/u/178532524?v=4?s=100" width="100px;" alt="msyago"/><br /><sub><b>msyago</b></sub></a><br /><a href="#code-msyago" title="Code">💻</a> <a href="#doc-msyago" title="Documentation">📖</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/DEKU-12"><img src="https://avatars.githubusercontent.com/u/98225885?v=4?s=100" width="100px;" alt="Ayush_14"/><br /><sub><b>Ayush_14</b></sub></a><br /><a href="#code-DEKU-12" title="Code">💻</a> <a href="#doc-DEKU-12" title="Documentation">📖</a></td>
-    </tr>
-  </tbody>
-</table>
-
-<!-- markdownlint-restore -->
-<!-- prettier-ignore-end -->
-
-<!-- ALL-CONTRIBUTORS-LIST:END -->
