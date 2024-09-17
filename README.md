@@ -61,4 +61,13 @@
 | Git Setup                     | Singh, Aakash      | Main                | ✅ Done           
 | Invistigate Dataset           | Singh, Aakash      | singh-aakash        | 🔄 In-Progress
 
-### Contributors
+## Contributors
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
