@@ -70,6 +70,7 @@
   <tbody>
     <tr>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/aash1999"><img src="https://avatars.githubusercontent.com/u/39939476?v=4?s=100" width="100px;" alt="Aakash Singh"/><br /><sub><b>Aakash Singh</b></sub></a><br /><a href="#code-aash1999" title="Code">💻</a> <a href="#doc-aash1999" title="Documentation">📖</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/ugantulga"><img src="https://avatars.githubusercontent.com/u/171556489?v=4?s=100" width="100px;" alt="ugantulga"/><br /><sub><b>ugantulga</b></sub></a><br /><a href="#code-ugantulga" title="Code">💻</a> <a href="#doc-ugantulga" title="Documentation">📖</a></td>
     </tr>
   </tbody>
 </table>
