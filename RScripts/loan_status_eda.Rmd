@@ -1,0 +1,53 @@
+---
+title: "Understanding Dataset"
+author: "Singh Sivaram, Aakash"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: hide
+    number_sections: false
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, comment = NA)
+```
+
+```{r init, include=F}
+# include all your packages here
+library(ezids)
+library(data.table)
+source("./HelperFunctions/fetchSubset.R")
+```
+```{r}
+# all file paths
+df_file_path = "../DataSet/filtered_accepted_2013_to_2018Q4.csv"
+
+```
+
+# Inspecting Dataset
+
+```{r}
+# Load Dataset
+df_100 <- fetch_subset(df_file_path, col_names = c(-1), nrows = c(1, 100), chunk_size = 1e5)
+
+```
+
+## List of Column names 
+
+```{r}
+col_names <- names(df_100)
+print(col_names)
+```
+## \# of Observations
+
+```{r}
+nrows <- nrow(fread(df_file_path, select = 1, header = TRUE))
+print(nrows)
+
+```
+

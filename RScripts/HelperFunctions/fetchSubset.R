@@ -34,8 +34,6 @@ fetch_subset <- function(df_location, col_names, nrows = c(1, -1), chunk_size = 
   first_chunk <- fread(df_location, nrows = chunk_size, header = TRUE)
   all_col_names <- names(first_chunk)  # Extract all column names
   
-  # Convert column names to column indices
-  col_indices <- which(all_col_names %in% col_names)  # Identify the indices of requested columns
   
   # Error handling if some column names are not
 
@@ -46,11 +44,12 @@ fetch_subset <- function(df_location, col_names, nrows = c(1, -1), chunk_size = 
   first_chunk <- fread(df_location, nrows = chunk_size, header = TRUE)
   all_col_names <- names(first_chunk)
   # Convert column names to column indices
-  col_indices <- which(all_col_names %in% col_names)
-  
-  if (length(col_indices) != length(col_names)) {
-    stop("Some column names are not found in the dataset.")
+  if (length(col_names) == 1 & col_names[1] == -1){
+    col_indices <- which(all_col_names %in% all_col_names)
+  }else{
+    col_indices <- which(all_col_names %in% col_names) 
   }
+  
   
   # Determine the range of rows to fetch
   if (length(nrows) == 2) {
