@@ -29,7 +29,17 @@ In terms of loan status, we are only analyzing the "Fully Paid" and "Default" st
 
 ##Data Cleaning & Data Types
 
-For this question, we will be looking at the columns
+For this question, we will be looking at the specific columns of funded amount, loan status, term, and interest rate. These attributes are defined as such:
+
+1. Funded Amount: The total amount of the loan to be paid off.
+
+2. Loan Status: Whether the loan has been fully paid or has been defaulted by the borrower.
+
+3. Term: How long the borrower has to pay off the loan (Either 36 or 60 Months).
+
+4. Interest Rate: The percentage of the loan amount that the lender charges the borrower for borrowing money. 
+
+Based on this data, the funded amount and interest rate are data types that are numerical. On the other hand, loan status and term have been converted to factors and are categorical data types. While loan status logically makes sense to be categorical, term has been converted to a factor since there were only two types of loan terms (36 or 60 months) which can be seen as short term vs. long term when comparing the likelihood of default across loans. Term in this case will be viewed as nonlinear with interest rates and funded amount affecting risk with linearity.   
 
 ```{r, echo=TRUE}
 #Load Library
@@ -68,4 +78,3 @@ summary(df_final)
 ```
 
 ## Descriptive Statistics
-
