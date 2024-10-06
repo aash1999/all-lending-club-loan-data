@@ -20,26 +20,30 @@ options(scientific=T, digits = 3)
 # options(scipen=9, digits = 3) 
 ```
 
-# Question 1: How do the loan features of term, amount, and interest rate influence the likelihood of a loan defaulting or being fully paid? 
+# Question 1: How do the loan features of term, amount, and interest rate influence the likelihood of a loan being charged off versus being fully paid? 
 
-This question focuses on assessing risk levels and looking into trends of when the company can expect to see a loan defaulting or being paid off. 
+This question focuses on assessing risk levels and looking into trends of when the company can expect to see a loan charged off (lender has accepted the loan as unlikely to recover) or being paid off. 
 
 Assumptions:
-In terms of loan status, we are only analyzing the "Fully Paid" and "Default" status.
+In terms of loan status, we are only analyzing the "Fully Paid" and "Charge Off" status.
 
-##Data Cleaning & Data Types
+## Data Types & Data Cleaning
 
 For this question, we will be looking at the specific columns of funded amount, loan status, term, and interest rate. These attributes are defined as such:
 
 1. Funded Amount: The total amount of the loan to be paid off.
 
-2. Loan Status: Whether the loan has been fully paid or has been defaulted by the borrower.
+2. Loan Status: Whether the loan has been fully paid or has been charged off. A loan that is fully paid is defined as a loan where the total payment has been met. A charge off status is defined as the lender accepting the loan as uncollectible. This differs from the default status in which payments are late but the lender expects to collect what the borrower still owes.  
 
 3. Term: How long the borrower has to pay off the loan (Either 36 or 60 Months).
 
 4. Interest Rate: The percentage of the loan amount that the lender charges the borrower for borrowing money. 
 
-Based on this data, the funded amount and interest rate are data types that are numerical. On the other hand, loan status and term have been converted to factors and are categorical data types. While loan status logically makes sense to be categorical, term has been converted to a factor since there were only two types of loan terms (36 or 60 months) which can be seen as short term vs. long term when comparing the likelihood of default across loans. Term in this case will be viewed as nonlinear with interest rates and funded amount affecting risk with linearity.   
+Based on this data, the funded amount and interest rate are data types that are numerical. On the other hand, loan status and term have been converted to factors and are categorical data types. While loan status logically makes sense to be categorical, term has been converted to a factor since there were only two types of loan terms (36 or 60 months) which can be seen as short term vs. long term when comparing the likelihood of default across loans. Term in this case will be viewed as nonlinear with interest rates and funded amount affecting risk with linearity.
+
+To retrieve only this information, data cleaning was done on the accepted loans dataset that initially contained 2,157,894 million observations. After filtering to only see the four columns listed above in addition to filtering the loan status to either "Fully Paid" or "Charged Off", the total observations stand at 1,245,285 observations.    
+
+
 
 ```{r, echo=TRUE}
 #Load Library
@@ -53,7 +57,7 @@ f_df<- df[, c("funded_amnt", "loan_status","term","int_rate")]
 
 #Filter for specific loan status
 df_filter <- f_df %>%
-  filter(loan_status %in% c("Default", "Fully Paid"))
+  filter(loan_status %in% c("Charged Off", "Fully Paid"))
 
 #Convert loan status and term as factors
 df_filter$loan_status <- as.factor(df_filter$loan_status)
@@ -70,11 +74,113 @@ str(df_final)
 
 
 ```
+## Descriptive Statistics
+
+Initial statistics summarizes data that can help in identifying patterns, trends, and outliers. To demonstrate this, loan status will be analyzed against each loan feature (term, amount and interest rate) to see any relationships and patterns.  
+
+### Relationship between Loan Status and Loan Term
 
 ```{r, echo=TRUE}
-#Summary Stats
-summary(df_final)
+# Initialize Library
+library(ggplot2)
+
+# Contingency Table
+c_table <- table(df_final$term, df_final$loan_status)
+cat("Contingency Table: Loan Status by Term\n\n")
+print(c_table)
+
+#Contingency Table by Proportions
+prop_table <-prop.table(c_table) *100
+cat("Contingency Table: Loan Status by Term Proportions (by %)\n\n")
+print(prop_table)
+
+# Stacked Bar Chart
+ggplot(df_final, aes(x = term, fill = loan_status)) + 
+  geom_bar(position = "stack") +
+  labs(x="Loan Term", y="Number of Loans",title="Stacked Bar Chart of Loan Status by Term" ) +
+  scale_fill_manual(values = c("navy", "lightblue"))
+  
+```
+
+Looking at the information numerically via a contingency table, you can tell that 60 month loans that are fully paid have the highest frequency whereas 60 month loans that are charged off have the lowest frequency. Looking at frequency by proportions in percentages, fully paid 60 month loans accounts for about 63% while charged off 36 month loans account for about 12%.
+
+When visually shown on a stacked bar chart, you'll notice that shorter terms are more likelier to get charged off than loans with a longer term.  
+
+
+## Relationship between Loan Status and Loan Amount
+
+```{r}
+# Descriptive Stats of Loan Amount Separated by Loan Status
+
+amnt_stats <- df_final %>%
+  group_by(loan_status) %>%
+  summarise(
+    Mean = mean(funded_amnt, na.rm = TRUE),
+    Median = median(funded_amnt, na.rm = TRUE),
+    SD = sd(funded_amnt, na.rm = TRUE),
+    Q25 = quantile(funded_amnt, 0.25, na.rm = TRUE),
+    Q50 = quantile(funded_amnt, 0.50, na.rm = TRUE),
+    Q75 = quantile(funded_amnt, 0.75, na.rm = TRUE),
+    Min = min(funded_amnt, na.rm = TRUE),
+    Max = max(funded_amnt, na.rm = TRUE)
+  )
+
+cat("Descriptive Stats of Loan Amounts Separated by Loan Status)\n\n")
+print(amnt_stats)
+
 
 ```
 
-## Descriptive Statistics
+```{r}
+# Box Plot Comparing Loan Amounts by Loan Status
+ggplot(df_final, aes(x = loan_status, y=funded_amnt, fill = loan_status)) + 
+  geom_boxplot() + 
+  geom_boxplot( colour="black", outlier.colour="blue", outlier.shape=8, outlier.size=4) +
+  labs(title="Boxplot of Loan Amounts by Loan Status", x="Loan Status", y = "Loan Amount ($)") 
+
+```
+Based on the statistics, the following can be derived. With the charged off loans having a higher mean and median loan amount, this can suggest that the larger loan amounts may be associated with a higher risk of being charged off. Next, Charged off loans also have a slightly higher standard deviation showing for more variability in the amounts.Lastly, both loan statuses show the same exact minimum and maximum but that does not necessarily mean that the distributions are identical.
+
+Based on the boxplot, one commonality is the several outliers that exist around $40,000 for both loan statuses. However, this is not indicative that it is caused by status and requires further investigation through these high amounts being affected by other factors. Given the IQR of both statuses, there is not significant variability. You can however tell based on the IQR that the charged off loans have a slightly higher loan amounts compared to the fully paid loans that have a slightly lower loan amount.
+
+Overall, larger loan amounts may be associated with a higher charged off risk. 
+
+
+## Relationship Between Loan Status and Interest Rate
+
+```{r}
+# Descriptive Stats of Interest Rate Separated by Loan Status
+
+rate_stats <- df_final %>%
+  group_by(loan_status) %>%
+  summarise(
+    Mean = mean(int_rate, na.rm = TRUE),
+    Median = median(int_rate, na.rm = TRUE),
+    SD = sd(int_rate, na.rm = TRUE),
+    Q25 = quantile(int_rate, 0.25, na.rm = TRUE),
+    Q50 = quantile(int_rate, 0.50, na.rm = TRUE),
+    Q75 = quantile(int_rate, 0.75, na.rm = TRUE),
+    Min = min(int_rate, na.rm = TRUE),
+    Max = max(int_rate, na.rm = TRUE)
+  )
+
+cat("Descriptive Stats of Interest Rates Separated by Loan Status)\n\n")
+print(rate_stats)
+
+```
+
+```{r}
+library(ggplot2)
+ggplot(df_final, aes(x = int_rate, fill = loan_status)) + 
+  geom_histogram(binwidth = 1, position = "dodge", alpha = 0.7)+ 
+  labs(x="Interest Rate (%)", y="Frequency", title = "Distribution of Interest Rates by Loan Status") +
+  scale_fill_manual(values = c("navy", "lightblue")) 
+
+```
+Based on the statistics, higher interest rates significantly increase the likelihood of a lona being charged off. Charged off loans have a mean interest rate of 15.8%, compared to 12.6% for fully paid loans, with a similar difference in the median (15.1% vs. 12.1%). Even at the lower end of the interest rate range, loans that default tend to have higher rates. The broader range in interest rates for charged off loans that has a higher standard deviation and higher 75th percentile suggests greater volatility and risk. This indicates that interest rates are a strong predictor of loan defaults.  
+
+Similar to the statistics, the histogram shows that interest rates have a strong influence on loan outcomes. Loans with a higher interest rate of around 15% and above are more likely to be charged off (in proportion to fully paid), indicating a greater risk of default at these levels. In contrast, lower interest rates between 10% to 12% are associated with a higher frequency of fully paid loans, suggesting that borrowers with lower rates are more likely to repay their loans in full. There is also a noticeable overlap in the 10% to 15% interest rate range, where fully paid and charged off loans occur. But as interest rates increase, the likelihood of a loan being charged off rises significantly. This suggests that interest rates are a key predictor of loan performance, with higher rates correlating strongly with loan defaults and lower rates with successful repayment.  
+
+
+## Multivariate Relationships
+
