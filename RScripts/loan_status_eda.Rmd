@@ -41,7 +41,7 @@ df_100 <- fetch_subset(df_file_path, col_names = c(-1), nrows = c(1, 100), chunk
 
 ```{r}
 col_names <- names(df_100)
-print(col_names)
+print(sort(col_names))
 ```
 ## \# of Observations
 
@@ -51,3 +51,24 @@ print(nrows)
 
 ```
 
+## variables
+
+```{r}
+columns_to_target = c("annual_inc", "dti", "fico_range_high", "fico_range_low", "loan_amnt", 
+  "int_rate", "earliest_cr_line", "revol_util", "delinq_2yrs", "pub_rec", 
+  "total_acc", "open_acc", "installment", "home_ownership", 
+  "verification_status", "delinq_amnt", "collections_12_mths_ex_med", 
+  "chargeoff_within_12_mths", "mths_since_last_delinq", "purpose", "loan_status")
+
+
+df <- fetch_subset(df_location = df_file_path, col_names = columns_to_target, nrows = c(1,-1))
+
+```
+
+```{r}
+str(df)
+```
+
+```{r}
+columns_to_remove = c("id", )
+```
