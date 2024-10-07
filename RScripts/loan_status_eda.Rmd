@@ -58,7 +58,7 @@ columns_to_target = c("annual_inc", "dti", "fico_range_high", "fico_range_low", 
   "int_rate", "earliest_cr_line", "revol_util", "delinq_2yrs", "pub_rec", 
   "total_acc", "open_acc", "installment", "home_ownership", 
   "verification_status", "delinq_amnt", "collections_12_mths_ex_med", 
-  "chargeoff_within_12_mths", "mths_since_last_delinq", "purpose", "loan_status")
+  "chargeoff_within_12_mths", "mths_since_last_delinq", "purpose", "sub_grade", "issue_d", "addr_state","inq_last_12m","loan_status")
 
 
 df <- fetch_subset(df_location = df_file_path, col_names = columns_to_target, nrows = c(1,-1))
@@ -70,5 +70,50 @@ str(df)
 ```
 
 ```{r}
-columns_to_remove = c("id", )
+convert_to_factors <- function(df) {
+  # Columns to convert to factors based on the provided list
+  factor_cols <- c("home_ownership", "verification_status", 
+                   "loan_status", "purpose", "addr_state","sub_grade")
+  
+  df[] <- lapply(names(df), function(col) {
+    if (col %in% factor_cols) {
+      return(as.factor(df[[col]]))
+    } else if (is.character(df[[col]]) && all(!is.na(as.numeric(df[[col]][-1])))) {
+      return(as.numeric(df[[col]]))
+    } else {
+      return(df[[col]])
+    }
+  })
+  
+  return(df)
+}
+df <- df[-1,]
+df <- convert_to_factors(df)
+str(df)
+```
+
+
+```{r}
+# Convert specified columns to numeric
+
+df$revol_util <- as.numeric(df$revol_util)
+df$mths_since_last_delinq <- as.numeric(df$mths_since_last_delinq)
+df$dti <- as.numeric(df$dti)
+df$inq_last_12m <- as.numeric(df$inq_last_12m)
+
+
+# Optional: Check for any warnings about NAs being introduced during coercion
+if (any(is.na(df$revol_util))) {
+  warning("NAs introduced in 'revol_util' during conversion.")
+}
+if (any(is.na(df$mths_since_last_delinq))) {
+  warning("NAs introduced in 'mths_since_last_delinq' during conversion.")
+}
+if (any(is.na(df$dti))) {
+  warning("NAs introduced in 'dti' during conversion.")
+}
+
+```
+```{r}
+str(df)
 ```

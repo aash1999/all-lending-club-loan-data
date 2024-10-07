@@ -1,0 +1,76 @@
+[1] "acc_now_delinq"                             "acc_open_past_24mths"                       "addr_state"                                
+  [4] "all_util"                                   "annual_inc"                                 "annual_inc_joint"                          
+  [7] "application_type"                           "avg_cur_bal"                                "bc_open_to_buy"                            
+ [10] "bc_util"                                    "chargeoff_within_12_mths"                   "collection_recovery_fee"                   
+ [13] "collections_12_mths_ex_med"                 "debt_settlement_flag"                       "debt_settlement_flag_date"                 
+ [16] "deferral_term"                              "delinq_2yrs"                                "delinq_amnt"                               
+ [19] "desc"                                       "disbursement_method"                        "dti"                                       
+ [22] "dti_joint"                                  "earliest_cr_line"                           "emp_length"                                
+ [25] "emp_title"                                  "fico_range_high"                            "fico_range_low"                            
+ [28] "funded_amnt"                                "funded_amnt_inv"                            "grade"                                     
+ [31] "hardship_amount"                            "hardship_dpd"                               "hardship_end_date"                         
+ [34] "hardship_flag"                              "hardship_last_payment_amount"               "hardship_length"                           
+ [37] "hardship_loan_status"                       "hardship_payoff_balance_amount"             "hardship_reason"                           
+ [40] "hardship_start_date"                        "hardship_status"                            "hardship_type"                             
+ [43] "home_ownership"                             "id"                                         "il_util"                                   
+ [46] "initial_list_status"                        "inq_fi"                                     "inq_last_12m"                              
+ [49] "inq_last_6mths"                             "installment"                                "int_rate"                                  
+ [52] "issue_d"                                    "last_credit_pull_d"                         "last_fico_range_high"                      
+ [55] "last_fico_range_low"                        "last_pymnt_amnt"                            "last_pymnt_d"                              
+ [58] "loan_amnt"                                  "loan_status"                                "max_bal_bc"                                
+ [61] "member_id"                                  "mo_sin_old_il_acct"                         "mo_sin_old_rev_tl_op"                      
+ [64] "mo_sin_rcnt_rev_tl_op"                      "mo_sin_rcnt_tl"                             "mort_acc"                                  
+ [67] "mths_since_last_delinq"                     "mths_since_last_major_derog"                "mths_since_last_record"                    
+ [70] "mths_since_rcnt_il"                         "mths_since_recent_bc"                       "mths_since_recent_bc_dlq"                  
+ [73] "mths_since_recent_inq"                      "mths_since_recent_revol_delinq"             "next_pymnt_d"                              
+ [76] "num_accts_ever_120_pd"                      "num_actv_bc_tl"                             "num_actv_rev_tl"                           
+ [79] "num_bc_sats"                                "num_bc_tl"                                  "num_il_tl"                                 
+ [82] "num_op_rev_tl"                              "num_rev_accts"                              "num_rev_tl_bal_gt_0"                       
+ [85] "num_sats"                                   "num_tl_120dpd_2m"                           "num_tl_30dpd"                              
+ [88] "num_tl_90g_dpd_24m"                         "num_tl_op_past_12m"                         "open_acc"                                  
+ [91] "open_acc_6m"                                "open_act_il"                                "open_il_12m"                               
+ [94] "open_il_24m"                                "open_rv_12m"                                "open_rv_24m"                               
+ [97] "orig_projected_additional_accrued_interest" "out_prncp"                                  "out_prncp_inv"                             
+[100] "payment_plan_start_date"                    "pct_tl_nvr_dlq"                             "percent_bc_gt_75"                          
+[103] "policy_code"                                "pub_rec"                                    "pub_rec_bankruptcies"                      
+[106] "purpose"                                    "pymnt_plan"                                 "recoveries"                                
+[109] "revol_bal"                                  "revol_bal_joint"                            "revol_util"                                
+[112] "sec_app_chargeoff_within_12_mths"           "sec_app_collections_12_mths_ex_med"         "sec_app_earliest_cr_line"                  
+[115] "sec_app_fico_range_high"                    "sec_app_fico_range_low"                     "sec_app_inq_last_6mths"                    
+[118] "sec_app_mort_acc"                           "sec_app_mths_since_last_major_derog"        "sec_app_num_rev_accts"                     
+[121] "sec_app_open_acc"                           "sec_app_open_act_il"                        "sec_app_revol_util"                        
+[124] "settlement_amount"                          "settlement_date"                            "settlement_percentage"                     
+[127] "settlement_status"                          "settlement_term"                            "sub_grade"                                 
+[130] "tax_liens"                                  "term"                                       "title"                                     
+[133] "tot_coll_amt"                               "tot_cur_bal"                                "tot_hi_cred_lim"                           
+[136] "total_acc"                                  "total_bal_ex_mort"                          "total_bal_il"                              
+[139] "total_bc_limit"                             "total_cu_tl"                                "total_il_high_credit_limit"                
+[142] "total_pymnt"                                "total_pymnt_inv"                            "total_rec_int"                             
+[145] "total_rec_late_fee"                         "total_rec_prncp"                            "total_rev_hi_lim"                          
+[148] "url"                                        "verification_status"                        "verification_status_joint"                 
+[151] "zip_code" 
+
+
+
+The most important features that can affect the `loan_status` typically revolve around an applicant's creditworthiness, financial history, and loan characteristics. 
+
+1. `annual_inc` – The borrower's annual income influences their ability to repay the loan.
+2. `dti` – Debt-to-income ratio is critical in assessing whether the borrower has too much debt relative to their income.
+3. `fico_range_high` – The borrower's highest FICO score, indicating creditworthiness.
+4. `fico_range_low` – The borrower's lowest FICO score, providing further insight into their credit profile.
+5. `loan_amnt` – The amount of the loan can influence risk, with larger loans generally being riskier.
+6. `int_rate` – The interest rate affects the cost of the loan and could impact default risk.
+7. `earliest_cr_line` – The age of the borrower's credit history, where longer histories typically indicate lower risk.
+8. `revol_util` – Revolving credit utilization shows how much credit the borrower is using compared to their credit limit.
+9. `delinq_2yrs` – Number of delinquencies in the past two years, which is a strong indicator of financial instability.
+10. `pub_rec` – Public records such as bankruptcies or liens can indicate poor financial history.
+11. `total_acc` – Total number of credit accounts, indicating how much credit the borrower has managed.
+12. `open_acc` – Number of currently open accounts, which shows how much active credit the borrower is managing.
+13. `installment` – The monthly payment on the loan, impacting affordability for the borrower.
+14. `home_ownership` – Whether the borrower owns a home, which can serve as collateral or indicate financial stability.
+15. `verification_status` – Indicates whether the borrower's income has been verified, which can affect the lender’s confidence in repayment.
+16. `delinq_amnt` – The total amount delinquent, showing how much the borrower is behind on payments.
+17. `collections_12_mths_ex_med` – Number of collections in the last 12 months, excluding medical bills.
+18. `chargeoff_within_12_mths` – Number of charge-offs in the last 12 months, a direct measure of default risk.
+19. `mths_since_last_delinq` – Time since the last delinquency, where recent delinquencies indicate a higher risk of default.
+20. `purpose` – The stated purpose of the loan (e.g., debt consolidation, home improvement), as some purposes may have higher default rates than others.
