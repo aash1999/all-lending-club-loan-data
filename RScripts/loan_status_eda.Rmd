@@ -117,3 +117,51 @@ if (any(is.na(df$dti))) {
 ```{r}
 str(df)
 ```
+
+```{r}
+# Count the number of NA values in each column
+na_counts <- sapply(df, function(x) sum(is.na(x)))
+
+# Print the counts of NA values
+print(na_counts)
+
+```
+
+```{r}
+# Load necessary libraries
+library(corrplot)
+setDT(df)  # Converts df to a data.table, if it isn't one already
+
+# Select only numeric columns from the data table
+numeric_df <- df[, .SD, .SDcols = sapply(df, is.numeric)]
+
+# Calculate the correlation matrix
+cor_matrix <- cor(numeric_df, use = "pairwise.complete.obs")
+
+# Set plotting parameters for larger plot size
+#par(cex.axis = 3, cex.lab = 3, cex.main = 3)  # Increase text size
+
+# Create a larger plot window
+options(repr.plot.width = 35, repr.plot.height = 35)  # Use this in RMarkdown or Jupyter Notebooks
+
+# Plot the correlation matrix using corrplot
+#png(filename = "mycorrplot.png", width = 1200, height = 800)
+# Set plotting parameters for larger text size
+corrplot(cor_matrix,
+         type = "upper", 
+         method = "circle", 
+         addCoef.col = 0.2,  # Color for coefficients
+         number.cex = 0.1,  # Size of the correlation coefficients
+         tl.cex = 0.6,      # Size of the text labels for variables
+         tl.col = "black",  # Color of the text labels
+         cl.cex = 0.5,      # Size of the color legend text
+         main = "Correlation Matrix",  # Title of the plot
+         main.cex = 0.1)      # Size of the title text
+
+# Close the device
+#dev.off()
+```
+
+
+
+
