@@ -74,3 +74,12 @@ The most important features that can affect the `loan_status` typically revolve 
 18. `chargeoff_within_12_mths` – Number of charge-offs in the last 12 months, a direct measure of default risk.
 19. `mths_since_last_delinq` – Time since the last delinquency, where recent delinquencies indicate a higher risk of default.
 20. `purpose` – The stated purpose of the loan (e.g., debt consolidation, home improvement), as some purposes may have higher default rates than others.
+
+
+
+Observations :
+
+% of charged off loans for each quarter 
+- i wnet with percentage so that it will give me the idea of charged off frequency compared to other type of loans.
+- this will handel irregularity in the frequency of loan that dispursed specific year.
+ 
