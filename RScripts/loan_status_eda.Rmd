@@ -393,8 +393,8 @@ ggplot() +
   geom_point(data = frequency_data, aes(x = longitude, y = latitude, size = percentage_charged_off_before), color = "red", alpha = 0.5) +
   geom_point(data = frequency_data, aes(x = longitude, y = latitude, size = percentage_charged_off_after), color = "green", alpha = 0.5) +
   scale_size_continuous(
-    breaks = seq(0, 50, by = 5),
-    range = c(0, 10),  # Adjust the range of sizes
+    breaks = seq(0, 50, 0.1),
+    range = c(5, 25),  # Adjust the range of sizes
     name = "Percentage of Charged Off Loans",
     guide = "none"
   ) +
@@ -407,109 +407,5 @@ ggplot() +
 
 ```
 
-```{r}
-frequency_data
-```
-```{r}
-library(ggplot2)
-library(reshape2)
-
-# Step 1: Prepare the data for plotting
-# Melt the data to long format for easy plotting
-frequency_data_long <- melt(frequency_data, id.vars = "state", 
-                             measure.vars = c("percentage_charged_off_before", "percentage_charged_off_after"), 
-                             variable.name = "Period", value.name = "Percentage_Charged_Off")
-
-# Step 2: Create the histograms
-ggplot(frequency_data_long, aes(x = Percentage_Charged_Off, fill = Period)) +
-  geom_histogram(binwidth = 1, alpha = 0.7, position = "identity", color = "black") +
-  scale_fill_manual(values = c("red", "green"), 
-                    labels = c("Before Q2 2015", "After Q2 2015")) +
-  labs(title = "Distribution of Charged Off Loan Percentages",
-       x = "Percentage of Charged Off Loans",
-       y = "Frequency",
-       fill = "Period") +
-  theme_minimal()
-
 ```
 
-```{r}
-# Load necessary libraries
-library(dplyr)
-library(ggplot2)
-library(maps)
-library(ggmap)
-
-# Load the state coordinates
-state_coords <- read.csv("../DataSet/states.csv")
-
-# Step 1: Verify and convert 'issue_d' to Date if necessary
-df$issue_d <- as.Date(df$issue_d, format = "%Y-%m-%d")  # Adjust the format if necessary
-
-# Step 2: Filter the dataframe and remove NaN values
-charged_off_df <- df %>%
-  filter(!is.na(issue_d), !is.na(addr_state))  # Ensure we have dates and states to work with
-
-# Step 3: Create a new column for quarters
-charged_off_df <- charged_off_df %>%
-  mutate(quarter_year = as.integer(format(issue_d, "%Y")) * 10 + ceiling(as.integer(format(issue_d, "%m")) / 3))
-
-# Step 4: Split the data into two groups: before and including Q2 2015, and after Q2 2015
-before_2015_Q2 <- charged_off_df %>%
-  filter(quarter_year <= 20152)
-
-after_2015_Q2 <- charged_off_df %>%
-  filter(quarter_year > 20152)
-
-# Step 5: Calculate charged off loans by state for both periods
-charged_off_loans_before <- before_2015_Q2 %>%
-  filter(loan_status == "Charged Off") %>%
-  group_by(addr_state) %>%
-  summarise(charged_off_loans = n(), .groups = "drop")
-
-charged_off_loans_after <- after_2015_Q2 %>%
-  filter(loan_status == "Charged Off") %>%
-  group_by(addr_state) %>%
-  summarise(charged_off_loans = n(), .groups = "drop")
-
-# Step 6: Merge with state coordinates for both periods
-frequency_data_before <- state_coords %>%
-  left_join(charged_off_loans_before, by = c("state" = "addr_state")) %>%
-  mutate(charged_off_loans = ifelse(is.na(charged_off_loans), 0, charged_off_loans))
-
-frequency_data_after <- state_coords %>%
-  left_join(charged_off_loans_after, by = c("state" = "addr_state")) %>%
-  mutate(charged_off_loans = ifelse(is.na(charged_off_loans), 0, charged_off_loans))
-
-# Step 7: Filter to keep only points within the contiguous US for both datasets
-frequency_data_before <- frequency_data_before %>%
-  filter(latitude >= 24.396308 & latitude <= 49.384358 & 
-         longitude >= -125.0 & longitude <= -66.93457)
-
-frequency_data_after <- frequency_data_after %>%
-  filter(latitude >= 24.396308 & latitude <= 49.384358 & 
-         longitude >= -125.0 & longitude <= -66.93457)
-
-# Step 8: Create the map
-us_map <- map_data("state")
-
-# Step 9: Plot with circles for both periods
-ggplot() +
-  geom_polygon(data = us_map, aes(x = long, y = lat, group = group), fill = "lightgrey") +
-  geom_point(data = frequency_data_before,
-             aes(x = longitude, y = latitude, size = charged_off_loans), 
-             color = "red", alpha = 0.5) +
-  geom_point(data = frequency_data_after,
-             aes(x = longitude, y = latitude, size = charged_off_loans), 
-             color = "green", alpha = 0.5) +
-  scale_size_continuous(
-    range = c(8, 50),  # Adjust the range of sizes
-    guide = "none"  # Remove the legend for size
-  ) +
-  labs(title = "Charged Off Loans by State (Before and After Q2 2015)",
-       x = "Longitude",
-       y = "Latitude") +
-  theme_minimal()
-
-
-```
