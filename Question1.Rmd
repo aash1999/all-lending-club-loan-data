@@ -11,7 +11,7 @@ output:
     toc_depth: '3'
 ---
 
-```{r setup, include=F}
+```{r setup, include=F, Echo =FALSE}
 # Some of common RMD options (and the defaults) are: 
 # include=T, eval=T, echo=T, results='hide'/'asis'/'markup',..., collapse=F, warning=T, message=T, error=T, cache=T, fig.width=6, fig.height=4, fig.dim=c(6,4) #inches, fig.align='left'/'center','right', 
 knitr::opts_chunk$set(results="markup", warning = F, message = F)
@@ -45,7 +45,7 @@ To retrieve only this information, data cleaning was done on the accepted loans 
 
 
 
-```{r, echo=TRUE}
+```{r, echo=FALSE}
 #Load Library
 library(dplyr)
 
@@ -80,7 +80,7 @@ Initial statistics summarizes data that can help in identifying patterns, trends
 
 ### Relationship between Loan Status and Loan Term
 
-```{r, echo=TRUE}
+```{r, echo=FALSE}
 # Initialize Library
 library(ggplot2)
 
@@ -109,7 +109,7 @@ When visually shown on a stacked bar chart, you'll notice that shorter terms are
 
 ## Relationship between Loan Status and Loan Amount
 
-```{r}
+```{r, echo=FALSE}
 # Descriptive Stats of Loan Amount Separated by Loan Status
 
 amnt_stats <- df_final %>%
@@ -131,7 +131,7 @@ print(amnt_stats)
 
 ```
 
-```{r}
+```{r, echo=FALSE}
 # Box Plot Comparing Loan Amounts by Loan Status
 ggplot(df_final, aes(x = loan_status, y=funded_amnt, fill = loan_status)) + 
   geom_boxplot() + 
@@ -139,6 +139,7 @@ ggplot(df_final, aes(x = loan_status, y=funded_amnt, fill = loan_status)) +
   labs(title="Boxplot of Loan Amounts by Loan Status", x="Loan Status", y = "Loan Amount ($)") 
 
 ```
+
 Based on the statistics, the following can be derived. With the charged off loans having a higher mean and median loan amount, this can suggest that the larger loan amounts may be associated with a higher risk of being charged off. Next, Charged off loans also have a slightly higher standard deviation showing for more variability in the amounts.Lastly, both loan statuses show the same exact minimum and maximum but that does not necessarily mean that the distributions are identical.
 
 Based on the boxplot, one commonality is the several outliers that exist around $40,000 for both loan statuses. However, this is not indicative that it is caused by status and requires further investigation through these high amounts being affected by other factors. Given the IQR of both statuses, there is not significant variability. You can however tell based on the IQR that the charged off loans have a slightly higher loan amounts compared to the fully paid loans that have a slightly lower loan amount.
@@ -148,7 +149,7 @@ Overall, larger loan amounts may be associated with a higher charged off risk.
 
 ## Relationship Between Loan Status and Interest Rate
 
-```{r}
+```{r, echo=FALSE}
 # Descriptive Stats of Interest Rate Separated by Loan Status
 
 rate_stats <- df_final %>%
@@ -169,7 +170,7 @@ print(rate_stats)
 
 ```
 
-```{r}
+```{r, echo=FALSE}
 library(ggplot2)
 ggplot(df_final, aes(x = int_rate, fill = loan_status)) + 
   geom_histogram(binwidth = 1, position = "dodge", alpha = 0.7)+ 
@@ -177,10 +178,39 @@ ggplot(df_final, aes(x = int_rate, fill = loan_status)) +
   scale_fill_manual(values = c("navy", "lightblue")) 
 
 ```
-Based on the statistics, higher interest rates significantly increase the likelihood of a lona being charged off. Charged off loans have a mean interest rate of 15.8%, compared to 12.6% for fully paid loans, with a similar difference in the median (15.1% vs. 12.1%). Even at the lower end of the interest rate range, loans that default tend to have higher rates. The broader range in interest rates for charged off loans that has a higher standard deviation and higher 75th percentile suggests greater volatility and risk. This indicates that interest rates are a strong predictor of loan defaults.  
+
+Based on the statistics, higher interest rates significantly increase the likelihood of a loan being charged off. Charged off loans have a mean interest rate of 15.8%, compared to 12.6% for fully paid loans, with a similar difference in the median (15.1% vs. 12.1%). Even at the lower end of the interest rate range, loans that default tend to have higher rates. The broader range in interest rates for charged off loans that has a higher standard deviation and higher 75th percentile suggests greater volatility and risk. This indicates that interest rates are a strong predictor of loan defaults.  
 
 Similar to the statistics, the histogram shows that interest rates have a strong influence on loan outcomes. Loans with a higher interest rate of around 15% and above are more likely to be charged off (in proportion to fully paid), indicating a greater risk of default at these levels. In contrast, lower interest rates between 10% to 12% are associated with a higher frequency of fully paid loans, suggesting that borrowers with lower rates are more likely to repay their loans in full. There is also a noticeable overlap in the 10% to 15% interest rate range, where fully paid and charged off loans occur. But as interest rates increase, the likelihood of a loan being charged off rises significantly. This suggests that interest rates are a key predictor of loan performance, with higher rates correlating strongly with loan defaults and lower rates with successful repayment.  
 
 
-## Multivariate Relationships
+## Normality of Loan Amount & Interest Rate
+
+```{r, echo=FALSE}
+library(ezids)
+amount_plot = outlierKD2(df_final, funded_amnt, rm = TRUE, qqplt = TRUE, histogram = FALSE)
+
+```
+
+```{r, echo=FALSE}
+##qqnorm(df_final$funded_amnt, main = "QQ Plot of Loan Amounts")
+##qqline(df_final$funded_amnt, col = "blue")
+
+```
+
+The loan amount data does not appear to follow a normal distribution based on the QQ plot, as there are significant deviations from the reference line, particularly at the tails. The lower quantiles fall below the line, while the upper quantiles rise far above it, indicating skewness or the presence of heavy tails. Additionally, the stepped line in the middle suggests that the data isn't evenly distributed. Even with the outliers removed and the points being aligned to 45 degree line, the tails still do not align therefore showing that this is not a normal distribution. Since the data is not normally distributed (I'm assuming even if we took the outliers, data will still not be distributed), ANOVA testing will not be done.    
+
+```{r, echo=FALSE}
+library(ezids)
+rate_plot = outlierKD2(df_final, int_rate, rm = TRUE, qqplt = TRUE, histogram = FALSE)
+
+```
+
+## Interpreting Coefficents
+
+## Multivariate Relationships & Other Types of Analysis To Test for Association (ANOVA), 
+
+Dependent Variable (Outcome): Loan Status
+
+Independent Variables: Term, Loan Amount, and Interest Rate
 
