@@ -407,5 +407,123 @@ ggplot() +
 
 ```
 
+```{r}
+# Filter the data for only the relevant loan statuses and home ownership categories
+df_filtered <- df %>%
+  filter(loan_status %in% c("Charged Off", "Fully Paid", "Current") &
+         home_ownership %in% c("MORTGAGE", "OWN", "RENT"))
+
+# Create a contingency table
+contingency_table <- table(df_filtered$loan_status, df_filtered$home_ownership)
+
+# Remove rows and columns with only zero counts
+contingency_table_filtered <- contingency_table[
+  rowSums(contingency_table) > 0, 
+  colSums(contingency_table) > 0
+]
+
+# View the filtered contingency table
+print(contingency_table_filtered)
+
+# Perform chi-squared test on the filtered table
+chi_sq_result <- chisq.test(contingency_table_filtered)
+
+# View the results of the chi-squared test
+print(chi_sq_result)
+
+expected_counts <- chisq.test(contingency_table_filtered)$expected
+print(expected_counts)
+
+
+
+
 ```
+---
+title: "Chi-Square Test for Home Ownership and Loan Status"
+author: "Your Name"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+## Hypotheses
+
+- **Null Hypothesis (H₀):** Home ownership status does not affect loan status.
+- **Alternative Hypothesis (H₁):** Home ownership status does affect loan status.
+
+## Observed vs. Expected Counts
+
+### Observed counts (from contingency table):
+
+- **MORTGAGE:**
+  - Charged Off: 107,903
+  - Current: 429,307
+  - Fully Paid: 511,353
+
+- **OWN:**
+  - Charged Off: 28,636
+  - Current: 103,842
+  - Fully Paid: 108,460
+
+- **RENT:**
+  - Charged Off: 116,600
+  - Current: 344,481
+  - Fully Paid: 372,044
+
+### Expected counts (based on the chi-squared test):
+
+- **MORTGAGE:**
+  - Charged Off: 125,049
+  - Current: 433,543.3
+  - Fully Paid: 489,970.7
+
+- **OWN:**
+  - Charged Off: 28,733.66
+  - Current: 99,619.25
+  - Fully Paid: 112,585.09
+
+- **RENT:**
+  - Charged Off: 99,356.38
+  - Current: 344,467.42
+  - Fully Paid: 389,301.21
+
+## Chi-Square Test Results
+
+- **Chi-Square Statistic (X-squared):** 7413.6
+- **Degrees of freedom (df):** 4
+- **p-value:** < 2.2e-16
+
+## Conclusion
+
+Since the **p-value** is extremely small (**< 2.2e-16**), much smaller than the typical significance level of 0.05, we **reject the null hypothesis (H₀)**.
+
+## Result
+
+There is a **significant association** between **home ownership status** and **loan status**. This means that home ownership affects the likelihood of whether a loan is charged off, fully paid, or current.
+
+This insight could be valuable for further analysis or decision-making based on how different home ownership categories influence loan outcomes.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
