@@ -438,6 +438,11 @@ print(expected_counts)
 
 
 ```
+
+
+
+
+
 ---
 title: "Chi-Square Test for Home Ownership and Loan Status"
 author: "Your Name"
@@ -500,10 +505,60 @@ Since the **p-value** is extremely small (**< 2.2e-16**), much smaller than the 
 
 There is a **significant association** between **home ownership status** and **loan status**. This means that home ownership affects the likelihood of whether a loan is charged off, fully paid, or current.
 
-This insight could be valuable for further analysis or decision-making based on how different home ownership categories influence loan outcomes.
 
 
+```{r}
+# Required Libraries
+library(ggplot2)
+library(dplyr)
+library(lubridate)
 
+df1 <- df
+# Convert 'issue_d' column to date format (if not already done)
+df1$issue_d <- as.Date(df$issue_d, format = "%Y-%m-%d")
+
+# Create 'period' column based on 'issue_d' date
+df1$period <- ifelse(!is.na(df1$issue_d) & df1$issue_d < as.Date("2015-01-01"), "Before 2015", 
+                     ifelse(!is.na(df1$issue_d) & df1$issue_d >= as.Date("2015-01-01"), "After 2015", NA))
+
+# Filter dataset for "Charged Off" and "Fully Paid" loan statuses, and remove rows with NA in 'period'
+df1_filtered <- df1 %>%
+  filter(loan_status %in% c("Charged Off", "Fully Paid") & !is.na(period))
+
+# Function to remove outliers based on IQR
+remove_outliers <- function(data, col) {
+  Q1 <- quantile(data[[col]], 0.25, na.rm = TRUE)
+  Q3 <- quantile(data[[col]], 0.75, na.rm = TRUE)
+  IQR <- Q3 - Q1
+  lower_bound <- Q1 - 1.5 * IQR
+  upper_bound <- Q3 + 1.5 * IQR
+  data[data[[col]] >= lower_bound & data[[col]] <= upper_bound, ]
+}
+
+# Define the numeric column to plot
+numeric_columns <- c("annual_inc")
+
+# Loop through each numeric column and create a combined box plot for "Charged Off" and "Fully Paid" loans
+for (col in numeric_columns) {
+  
+  # Remove outliers from the dataset for the current column
+  df_filtered <- remove_outliers(df1_filtered, col)
+  
+  # Create the box plot comparing "Before 2015" and "After 2015" for both loan statuses
+  p <- ggplot(df_filtered, aes_string(x = "period", y = col, fill = "loan_status")) + 
+    geom_boxplot(position = position_dodge(0.8), width = 0.6) +  # Adjusting position for side-by-side box plots
+    labs(title = paste("Box Plot of", col, "Before and After 2015 (Charged Off vs Fully Paid)"),
+         x = "Period", 
+         y = col) +
+    theme_minimal() +
+    scale_fill_manual(values = c("Charged Off" = "red", "Fully Paid" = "green"))  # Different colors for loan statuses
+  
+  # Display the plot
+  print(p)
+}
+
+
+```
 
 
 
