@@ -29,19 +29,11 @@ In terms of loan status, we are only analyzing the "Fully Paid" and "Charge Off"
 
 ## Data Types & Data Cleaning
 
-For this question, we will be looking at the specific columns of funded amount, loan status, term, and interest rate. These attributes are defined as such:
-
-1. Funded Amount: The total amount of the loan to be paid off.
-
-2. Loan Status: Whether the loan has been fully paid or has been charged off. A loan that is fully paid is defined as a loan where the total payment has been met. A charge off status is defined as the lender accepting the loan as uncollectible. This differs from the default status in which payments are late but the lender expects to collect what the borrower still owes.  
-
-3. Term: How long the borrower has to pay off the loan (Either 36 or 60 Months).
-
-4. Interest Rate: The percentage of the loan amount that the lender charges the borrower for borrowing money. 
+For this question, we will be looking at funded amount, loan status, term, and interest rate. 
 
 Based on this data, the funded amount and interest rate are data types that are numerical. On the other hand, loan status and term have been converted to factors and are categorical data types. While loan status logically makes sense to be categorical, term has been converted to a factor since there were only two types of loan terms (36 or 60 months) which can be seen as short term vs. long term when comparing the likelihood of default across loans. Term in this case will be viewed as nonlinear with interest rates and funded amount affecting risk with linearity.
 
-To retrieve only this information, data cleaning was done on the accepted loans dataset that initially contained 2,157,894 million observations. After filtering to only see the four columns listed above in addition to filtering the loan status to either "Fully Paid" or "Charged Off", the total observations stand at 1,245,285 observations.    
+To retrieve this information, data cleaning was done on the accepted loans dataset that initially contained 2,157,894 million observations. After filtering, the total observations stand at 1,245,285 observations.    
 
 
 
@@ -74,6 +66,32 @@ str(df_final)
 
 
 ```
+
+## Normality of Loan Amount & Interest Rate
+
+### QQ Plot of Loan Amount
+
+```{r, echo=FALSE}
+library(ezids)
+amount_plot = outlierKD2(df_final, funded_amnt, rm = TRUE, qqplt = TRUE, histogram = FALSE)
+
+```
+
+The loan amount data does not appear to follow a normal distribution based on the QQ plot, as there are significant deviations from the reference line, particularly at the tails. The lower quantiles fall below the line, while the upper quantiles rise far above it, indicating the presence of heavy tails. Additionally, the stepped line in the middle suggests that the data isn't evenly distributed. Even with the outliers removed, there are still extreme deviations at both ends therefore showing that this is not a normal distribution.    
+
+### QQ Plot of Interest Rate
+
+
+```{r, echo=FALSE}
+library(ezids)
+rate_plot = outlierKD2(df_final, int_rate, rm = TRUE, qqplt = TRUE, histogram = FALSE)
+
+```
+
+The interest rate also shows similar trends. There are major deviations from the reference line, especially in the upper tail, indicating that the interest rate distribution is not normal when outliers are present. Even with the outliers removed, the QQ plot appears much more linear showing significant improvement towards normality, though there are deviations that remain in the tails. 
+
+Overall, both loan amount and interest rate distributions are not normal when outliers are included. While showing improvement in normality when removing outliers, deviations still occur at the extremes. As a result, these datasets don't follow normality due to these deviations. 
+
 ## Descriptive Statistics
 
 Initial statistics summarizes data that can help in identifying patterns, trends, and outliers. To demonstrate this, loan status will be analyzed against each loan feature (term, amount and interest rate) to see any relationships and patterns.  
@@ -84,7 +102,7 @@ Initial statistics summarizes data that can help in identifying patterns, trends
 # Initialize Library
 library(ggplot2)
 
-# Contingency Table
+# Contingency Table (Correlation Analysis)
 c_table <- table(df_final$term, df_final$loan_status)
 cat("Contingency Table: Loan Status by Term\n\n")
 print(c_table)
@@ -102,12 +120,12 @@ ggplot(df_final, aes(x = term, fill = loan_status)) +
   
 ```
 
-Looking at the information numerically via a contingency table, you can tell that 60 month loans that are fully paid have the highest frequency whereas 60 month loans that are charged off have the lowest frequency. Looking at frequency by proportions in percentages, fully paid 60 month loans accounts for about 63% while charged off 36 month loans account for about 12%.
+Via the first contingency table, 60 month loans that are fully paid have the highest frequency whereas 60 month loans that are charged off have the lowest frequency. By percentage proportions in the next contingency table, fully paid 60 month loans accounts for about 63% while charged off 36 month loans account for about 12%.
 
 When visually shown on a stacked bar chart, you'll notice that shorter terms are more likelier to get charged off than loans with a longer term.  
 
 
-## Relationship between Loan Status and Loan Amount
+### Relationship between Loan Status and Loan Amount
 
 ```{r, echo=FALSE}
 # Descriptive Stats of Loan Amount Separated by Loan Status
@@ -140,14 +158,14 @@ ggplot(df_final, aes(x = loan_status, y=funded_amnt, fill = loan_status)) +
 
 ```
 
-Based on the statistics, the following can be derived. With the charged off loans having a higher mean and median loan amount, this can suggest that the larger loan amounts may be associated with a higher risk of being charged off. Next, Charged off loans also have a slightly higher standard deviation showing for more variability in the amounts.Lastly, both loan statuses show the same exact minimum and maximum but that does not necessarily mean that the distributions are identical.
+Based on the statistics, the charged off loans having a higher mean and median loan amount, this can suggest that the larger loan amounts may be associated with a higher risk of being charged off. Charged off loans also have a slightly higher standard deviation showing for more variability in the amounts.Lastly, both loan statuses show the same minimum and maximum but that does not necessarily mean that the distributions are identical.
 
 Based on the boxplot, one commonality is the several outliers that exist around $40,000 for both loan statuses. However, this is not indicative that it is caused by status and requires further investigation through these high amounts being affected by other factors. Given the IQR of both statuses, there is not significant variability. You can however tell based on the IQR that the charged off loans have a slightly higher loan amounts compared to the fully paid loans that have a slightly lower loan amount.
 
 Overall, larger loan amounts may be associated with a higher charged off risk. 
 
 
-## Relationship Between Loan Status and Interest Rate
+### Relationship Between Loan Status and Interest Rate
 
 ```{r, echo=FALSE}
 # Descriptive Stats of Interest Rate Separated by Loan Status
@@ -181,36 +199,50 @@ ggplot(df_final, aes(x = int_rate, fill = loan_status)) +
 
 Based on the statistics, higher interest rates significantly increase the likelihood of a loan being charged off. Charged off loans have a mean interest rate of 15.8%, compared to 12.6% for fully paid loans, with a similar difference in the median (15.1% vs. 12.1%). Even at the lower end of the interest rate range, loans that default tend to have higher rates. The broader range in interest rates for charged off loans that has a higher standard deviation and higher 75th percentile suggests greater volatility and risk. This indicates that interest rates are a strong predictor of loan defaults.  
 
-Similar to the statistics, the histogram shows that interest rates have a strong influence on loan outcomes. Loans with a higher interest rate of around 15% and above are more likely to be charged off (in proportion to fully paid), indicating a greater risk of default at these levels. In contrast, lower interest rates between 10% to 12% are associated with a higher frequency of fully paid loans, suggesting that borrowers with lower rates are more likely to repay their loans in full. There is also a noticeable overlap in the 10% to 15% interest rate range, where fully paid and charged off loans occur. But as interest rates increase, the likelihood of a loan being charged off rises significantly. This suggests that interest rates are a key predictor of loan performance, with higher rates correlating strongly with loan defaults and lower rates with successful repayment.  
+Similar to the statistics, the histogram shows interest rates having a strong influence on loan outcomes. Loans with a higher interest rate of around 15% and above are more likely to be charged off (in proportion to fully paid), indicating a greater risk of default at these levels. In contrast, lower interest rates between 10% to 12% are associated with a higher frequency of fully paid loans, suggesting that borrowers with lower rates are more likely to repay their loans in full. There is also a noticeable overlap in the 10% to 15% interest rate range, where fully paid and charged off loans occur. But as interest rates increase, the likelihood of a loan being charged off rises significantly. This suggests that interest rates are a key predictor of loan performance, with higher rates correlating strongly with loan defaults and lower rates with successful repayment.  
 
 
-## Normality of Loan Amount & Interest Rate
+
+
+## Correlation Analysis
+
+### Correlation between Loan Amount and Interest Rate
 
 ```{r, echo=FALSE}
-library(ezids)
-amount_plot = outlierKD2(df_final, funded_amnt, rm = TRUE, qqplt = TRUE, histogram = FALSE)
+cor(df_final[, c("funded_amnt", "int_rate")], use = "complete.obs")
 
 ```
 
+In both cases, the correlation between loan amount and interest rate is bidirectional, indicating that neither variable strongly influences the other. With a correlation coefficient of 0.129, this means that as the loan amount increases, the interest rate tends to increase slightly, but the relationship is not strong (vice versa).
+
+## Logistic Regression 
+
 ```{r, echo=FALSE}
-##qqnorm(df_final$funded_amnt, main = "QQ Plot of Loan Amounts")
-##qqline(df_final$funded_amnt, col = "blue")
+# Fit the logistic regression model
+model <- glm(loan_status ~ term + funded_amnt + int_rate, data = df_final, family = binomial)
+
+#Summary of the model
+summary(model)
+
+#Get the odd ratios
+exp(coef(model))
+
 
 ```
 
-The loan amount data does not appear to follow a normal distribution based on the QQ plot, as there are significant deviations from the reference line, particularly at the tails. The lower quantiles fall below the line, while the upper quantiles rise far above it, indicating skewness or the presence of heavy tails. Additionally, the stepped line in the middle suggests that the data isn't evenly distributed. Even with the outliers removed and the points being aligned to 45 degree line, the tails still do not align therefore showing that this is not a normal distribution. Since the data is not normally distributed (I'm assuming even if we took the outliers, data will still not be distributed), ANOVA testing will not be done.    
+Based on the logistic regression:
+
+Term: The negative coefficient suggests that a 60 month term is associated with a higher likelihood of the loan being charged off. With the p value being less than 0.05, term does contribute as a predictor.  
+
+Loan Amount: The loan amount does not have a statistically significant effect on the likelihood of a lona being charged off versus fully paid. The higher p-value of 0.71 that is greater than 0.05 indicates that loan amount is not a strong predictor in this model. 
+
+Interest Rate: The negative coefficient suggests that as the interest rate increases, the likelihood of the loan being fully paid decreases, meaning that higher interest rates are associated with a higher likelihood of being charged off. With the p value being less than 0.05, interest does contribute as a predictor.  
+
+### Odd Ratios
 
 ```{r, echo=FALSE}
-library(ezids)
-rate_plot = outlierKD2(df_final, int_rate, rm = TRUE, qqplt = TRUE, histogram = FALSE)
+#Get the odd ratios
+exp(coef(model))
 
 ```
-
-## Interpreting Coefficents
-
-## Multivariate Relationships & Other Types of Analysis To Test for Association (ANOVA), 
-
-Dependent Variable (Outcome): Loan Status
-
-Independent Variables: Term, Loan Amount, and Interest Rate
-
+Odd ratios based off of the logistic regression help interpret the impact of each predictor variable on the outcome. For term, loans with 60 months are less likely to be charged off compared to loans with a 36 month term. Specifically, the odds of a loan being charged off decrease by 34.9% for a 60 month term compared to a 36 month term. With the loan amount being one, this indicates no effect on the likelihood of the loan being charged off. For interest rate odds ratio of 0.892, this indicates that higher interest rates slightly decrease the likelihood of a loan being charged off. For each unit increase in the interest the odds of charge-off decrease by 10.8%
