@@ -37,7 +37,7 @@ To retrieve this information, data cleaning was done on the accepted loans datas
 
 
 
-```{r, echo=FALSE}
+```{r, echo=TRUE}
 #Load Library
 library(dplyr)
 
@@ -71,7 +71,7 @@ str(df_final)
 
 ### QQ Plot of Loan Amount
 
-```{r, echo=FALSE}
+```{r, echo=TRUE}
 library(ezids)
 amount_plot = outlierKD2(df_final, funded_amnt, rm = TRUE, qqplt = TRUE, histogram = FALSE)
 
@@ -82,7 +82,7 @@ The loan amount data does not appear to follow a normal distribution based on th
 ### QQ Plot of Interest Rate
 
 
-```{r, echo=FALSE}
+```{r, echo=TRUE}
 library(ezids)
 rate_plot = outlierKD2(df_final, int_rate, rm = TRUE, qqplt = TRUE, histogram = FALSE)
 
@@ -98,7 +98,7 @@ Initial statistics summarizes data that can help in identifying patterns, trends
 
 ### Relationship between Loan Status and Loan Term
 
-```{r, echo=FALSE}
+```{r, echo=TRUE}
 # Initialize Library
 library(ggplot2)
 
@@ -120,14 +120,14 @@ ggplot(df_final, aes(x = term, fill = loan_status)) +
   
 ```
 
-Via the first contingency table, 60 month loans that are fully paid have the highest frequency whereas 60 month loans that are charged off have the lowest frequency. By percentage proportions in the next contingency table, fully paid 60 month loans accounts for about 63% while charged off 36 month loans account for about 12%.
+Via the first contingency table, 36 month loans have a higher absolute number of both fully paid and charged off loans compared to 60 month loans. Proportionally, 36 month loans have a higher rate of being charged off (12.32%) than 60 month loans (8.01%)
 
 When visually shown on a stacked bar chart, you'll notice that shorter terms are more likelier to get charged off than loans with a longer term.  
 
 
 ### Relationship between Loan Status and Loan Amount
 
-```{r, echo=FALSE}
+```{r, echo=TRUE}
 # Descriptive Stats of Loan Amount Separated by Loan Status
 
 amnt_stats <- df_final %>%
@@ -149,7 +149,7 @@ print(amnt_stats)
 
 ```
 
-```{r, echo=FALSE}
+```{r, echo=TRUE}
 # Box Plot Comparing Loan Amounts by Loan Status
 ggplot(df_final, aes(x = loan_status, y=funded_amnt, fill = loan_status)) + 
   geom_boxplot() + 
@@ -162,12 +162,12 @@ Based on the statistics, the charged off loans having a higher mean and median l
 
 Based on the boxplot, one commonality is the several outliers that exist around $40,000 for both loan statuses. However, this is not indicative that it is caused by status and requires further investigation through these high amounts being affected by other factors. Given the IQR of both statuses, there is not significant variability. You can however tell based on the IQR that the charged off loans have a slightly higher loan amounts compared to the fully paid loans that have a slightly lower loan amount.
 
-Overall, larger loan amounts may be associated with a higher charged off risk. 
+Overall, larger loan amounts may be associated with a higher charged off risk. However holistically, loan amount alone does not appear to have a strong influence on whether a loan will be charged off or fully paid, given overlapping distributions. 
 
 
 ### Relationship Between Loan Status and Interest Rate
 
-```{r, echo=FALSE}
+```{r, echo=TRUE}
 # Descriptive Stats of Interest Rate Separated by Loan Status
 
 rate_stats <- df_final %>%
@@ -188,7 +188,7 @@ print(rate_stats)
 
 ```
 
-```{r, echo=FALSE}
+```{r, echo=TRUE}
 library(ggplot2)
 ggplot(df_final, aes(x = int_rate, fill = loan_status)) + 
   geom_histogram(binwidth = 1, position = "dodge", alpha = 0.7)+ 
@@ -197,36 +197,23 @@ ggplot(df_final, aes(x = int_rate, fill = loan_status)) +
 
 ```
 
-Based on the statistics, higher interest rates significantly increase the likelihood of a loan being charged off. Charged off loans have a mean interest rate of 15.8%, compared to 12.6% for fully paid loans, with a similar difference in the median (15.1% vs. 12.1%). Even at the lower end of the interest rate range, loans that default tend to have higher rates. The broader range in interest rates for charged off loans that has a higher standard deviation and higher 75th percentile suggests greater volatility and risk. This indicates that interest rates are a strong predictor of loan defaults.  
+Based on the statistics, higher interest rates significantly increase the likelihood of a loan being charged off. Charged off loans have a mean interest rate of 15.8%, compared to 12.6% for fully paid loans, with a similar difference in the median (15.1% vs. 12.1%). Even at the lower end of the interest rate range, loans that default tend to have higher rates. As charged off loans have a higher standard deviation and higher 75th percentile, this suggests greater volatility and risk. This indicates that interest rates are a strong predictor of loan defaults.  
 
 Similar to the statistics, the histogram shows interest rates having a strong influence on loan outcomes. Loans with a higher interest rate of around 15% and above are more likely to be charged off (in proportion to fully paid), indicating a greater risk of default at these levels. In contrast, lower interest rates between 10% to 12% are associated with a higher frequency of fully paid loans, suggesting that borrowers with lower rates are more likely to repay their loans in full. There is also a noticeable overlap in the 10% to 15% interest rate range, where fully paid and charged off loans occur. But as interest rates increase, the likelihood of a loan being charged off rises significantly. This suggests that interest rates are a key predictor of loan performance, with higher rates correlating strongly with loan defaults and lower rates with successful repayment.  
 
 
 
 
-## Correlation Analysis
+## Coeffiencts & Odd Ratios
 
-### Correlation between Loan Amount and Interest Rate
+### Coefficients
 
-```{r, echo=FALSE}
-cor(df_final[, c("funded_amnt", "int_rate")], use = "complete.obs")
-
-```
-
-In both cases, the correlation between loan amount and interest rate is bidirectional, indicating that neither variable strongly influences the other. With a correlation coefficient of 0.129, this means that as the loan amount increases, the interest rate tends to increase slightly, but the relationship is not strong (vice versa).
-
-## Logistic Regression 
-
-```{r, echo=FALSE}
+```{r, echo=TRUE}
 # Fit the logistic regression model
 model <- glm(loan_status ~ term + funded_amnt + int_rate, data = df_final, family = binomial)
 
 #Summary of the model
 summary(model)
-
-#Get the odd ratios
-exp(coef(model))
-
 
 ```
 
@@ -234,15 +221,15 @@ Based on the logistic regression:
 
 Term: The negative coefficient suggests that a 60 month term is associated with a higher likelihood of the loan being charged off. With the p value being less than 0.05, term does contribute as a predictor.  
 
-Loan Amount: The loan amount does not have a statistically significant effect on the likelihood of a lona being charged off versus fully paid. The higher p-value of 0.71 that is greater than 0.05 indicates that loan amount is not a strong predictor in this model. 
+Loan Amount: The loan amount does not have a statistically significant effect on the likelihood of a loan being charged off versus fully paid. The higher p-value of 0.71 that is greater than 0.05 indicates that loan amount is not a strong predictor in this model. 
 
 Interest Rate: The negative coefficient suggests that as the interest rate increases, the likelihood of the loan being fully paid decreases, meaning that higher interest rates are associated with a higher likelihood of being charged off. With the p value being less than 0.05, interest does contribute as a predictor.  
 
 ### Odd Ratios
 
-```{r, echo=FALSE}
+```{r, echo=TRUE}
 #Get the odd ratios
 exp(coef(model))
 
 ```
-Odd ratios based off of the logistic regression help interpret the impact of each predictor variable on the outcome. For term, loans with 60 months are less likely to be charged off compared to loans with a 36 month term. Specifically, the odds of a loan being charged off decrease by 34.9% for a 60 month term compared to a 36 month term. With the loan amount being one, this indicates no effect on the likelihood of the loan being charged off. For interest rate odds ratio of 0.892, this indicates that higher interest rates slightly decrease the likelihood of a loan being charged off. For each unit increase in the interest the odds of charge-off decrease by 10.8%
+Odd ratios based off of the logistic regression help interpret the impact of each predictor variable on the outcome. For term, loans with 60 months are less likely to be charged off compared to loans with a 36 month term. Specifically, the odds of a loan being charged off decrease by 34.9% for a 60 month term compared to a 36 month term. With the loan amount being one, this indicates no effect on the likelihood of the loan being charged off. For interest rate odds ratio of 0.892, this indicates that higher interest rates slightly decrease the likelihood of a loan being charged off. For each unit increase in interest, the odds of charge off decrease by 10.8%.
