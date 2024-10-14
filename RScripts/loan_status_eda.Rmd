@@ -508,73 +508,90 @@ There is a **significant association** between **home ownership status** and **l
 
 
 ```{r}
-# Required Libraries
-library(ggplot2)
-library(dplyr)
-library(lubridate)
+
+# Load necessary libraries
+library(data.table)  # For data manipulation
+library(fmsb)        # For radar chart
+library(dplyr)       # For data manipulation
+library(tidyr)       # For data manipulation
 
 df1 <- df
-# Convert 'issue_d' column to date format (if not already done)
-df1$issue_d <- as.Date(df$issue_d, format = "%Y-%m-%d")
 
-# Create 'period' column based on 'issue_d' date
-df1$period <- ifelse(!is.na(df1$issue_d) & df1$issue_d < as.Date("2015-01-01"), "Before 2015", 
-                     ifelse(!is.na(df1$issue_d) & df1$issue_d >= as.Date("2015-01-01"), "After 2015", NA))
+# Ensure issue_d is in Date format
+df1$issue_d <- as.Date(df1$issue_d)
 
-# Filter dataset for "Charged Off" and "Fully Paid" loan statuses, and remove rows with NA in 'period'
-df1_filtered <- df1 %>%
-  filter(loan_status %in% c("Charged Off", "Fully Paid") & !is.na(period))
+# Create a period variable
+df1$period <- ifelse(df1$issue_d < as.Date("2015-01-01"), "Before 2015", "After 2015")
 
-# Function to remove outliers based on IQR
-remove_outliers <- function(data, col) {
-  Q1 <- quantile(data[[col]], 0.25, na.rm = TRUE)
-  Q3 <- quantile(data[[col]], 0.75, na.rm = TRUE)
-  IQR <- Q3 - Q1
-  lower_bound <- Q1 - 1.5 * IQR
-  upper_bound <- Q3 + 1.5 * IQR
-  data[data[[col]] >= lower_bound & data[[col]] <= upper_bound, ]
+# Function to create summary data for radar chart
+create_radar_data <- function(data) {
+  data %>%
+    filter(loan_status %in% c("Fully Paid", "Charged Off")) %>%  # Filter for specific loan statuses
+    group_by(loan_status) %>%
+    summarise(
+      median_int_rate = median(int_rate, na.rm = TRUE),
+      median_annual_inc = median(annual_inc, na.rm = TRUE),
+      median_dti = median(dti, na.rm = TRUE),
+      median_fico_range_low = median(fico_range_low, na.rm = TRUE),
+      median_fico_range_high = median(fico_range_high, na.rm = TRUE),
+      median_revol_util = median(revol_util, na.rm = TRUE),
+      .groups = 'drop'  # Prevent warning about grouping
+    ) %>%
+    pivot_wider(names_from = loan_status, 
+                values_from = starts_with("median_"), 
+                values_fill = list(median_int_rate = 0, 
+                                   median_annual_inc = 0, 
+                                   median_dti = 0, 
+                                   median_fico_range_low = 0, 
+                                   median_fico_range_high = 0, 
+                                   median_revol_util = 0),
+                names_prefix = "median_")  # Prefix the column names for clarity
 }
 
-# Define the numeric column to plot
-numeric_columns <- c("annual_inc")
+# Create radar data for both periods
+before_radar_data <- create_radar_data(df1[period == "Before 2015"])
+after_radar_data <- create_radar_data(df1[period == "After 2015"])
 
-# Loop through each numeric column and create a combined box plot for "Charged Off" and "Fully Paid" loans
-for (col in numeric_columns) {
+# Function to plot radar chart
+plot_radar <- function(data, title) {
+  # Ensure data is a data frame
+  data <- as.data.frame(data)
   
-  # Remove outliers from the dataset for the current column
-  df_filtered <- remove_outliers(df1_filtered, col)
+  # Ensure all data columns are numeric
+  data[-1] <- lapply(data[-1], as.numeric)
   
-  # Create the box plot comparing "Before 2015" and "After 2015" for both loan statuses
-  p <- ggplot(df_filtered, aes_string(x = "period", y = col, fill = "loan_status")) + 
-    geom_boxplot(position = position_dodge(0.8), width = 0.6) +  # Adjusting position for side-by-side box plots
-    labs(title = paste("Box Plot of", col, "Before and After 2015 (Charged Off vs Fully Paid)"),
-         x = "Period", 
-         y = col) +
-    theme_minimal() +
-    scale_fill_manual(values = c("Charged Off" = "red", "Fully Paid" = "green"))  # Different colors for loan statuses
+  # Create max and min vectors based on numeric columns
+  max_values <- apply(data[, -1], 2, max, na.rm = TRUE)
+  min_values <- apply(data[, -1], 2, min, na.rm = TRUE)
+
+  # Combine max, min, and the data
+  radar_data <- rbind(max_values, min_values, data[, -1])
   
-  # Display the plot
-  print(p)
+  # Set row names for the radar chart
+  row.names(radar_data) <- c("Max", "Min", as.character(data[[1]]))
+
+  # Plot radar chart with reduced text size
+  radarchart(radar_data, axistype = 1,
+             pcol = c("red", "green"),
+             plwd = 2,
+             plty = 1,
+             title = title,
+             cglcol = "grey",    # Color of grid lines
+             cglty = 1,          # Type of grid lines
+             axislabcol = "black", # Axis label color
+             caxislabels = seq(0, 100, 20),  # Customize axis labels
+             cex.axis = 0.7,     # Size of axis labels
+             cex.main = 0.8,     # Size of title
+             pbg = NA)           # Background color for polygon
 }
+
+# Plot radar charts
+par(mfrow = c(1, 2))  # Set up the plotting area for two plots
+plot_radar(before_radar_data, "Before 2015")
+plot_radar(after_radar_data, "After 2015")
 
 
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
