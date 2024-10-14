@@ -612,7 +612,7 @@ dfr1 <- dfr1 %>% filter(dti <= 100)  # Adjusted for percentage conversion
 combined_df <- bind_rows(df1, dfr1)
 
 # Bin the dti values (you can adjust the bin width based on your data)
-bin_width <- 0.01  # Adjust as needed for percentage
+bin_width <- 0.5  # Adjust as needed for percentage
 combined_df <- combined_df %>%
   mutate(dti_bin = cut(dti, breaks = seq(0, 1, by = bin_width), right = FALSE))
 
@@ -634,5 +634,79 @@ ggplot(dti_freq, aes(x = dti_bin_num, y = freq, color = source)) +
   scale_x_continuous(labels = scales::percent_format(accuracy = 0.01)) +  # Format x-axis as percentage
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for readability
+rm(df1)
+rm(dfr1)
 
+```
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+dfr1 <- dfr
+# Ensure the Debt-To-Income Ratio is numeric
+dfr1$dti <- as.numeric(gsub("%", "", dfr1$`Debt-To-Income Ratio`))  # Remove '%' and convert to numeric
+
+# Remove NA values (if any) in Debt-To-Income Ratio
+dfr1 <- dfr1 %>% filter(!is.na(dti))
+
+# Define a function to remove outliers based on IQR
+remove_outliers <- function(data) {
+  Q1 <- quantile(data$dti, 0.25, na.rm = TRUE)  # 1st quartile (25th percentile)
+  Q3 <- quantile(data$dti, 0.75, na.rm = TRUE)  # 3rd quartile (75th percentile)
+  IQR <- Q3 - Q1  # Interquartile range
+  lower_bound <- Q1 - 1.5 * IQR
+  upper_bound <- Q3 + 1.5 * IQR
+  data %>%
+    filter(dti >= lower_bound & dti <= upper_bound)  # Remove outliers
+}
+
+# Apply the function to remove outliers
+dfr_no_outliers <- remove_outliers(dfr1)
+
+# Create the distribution plot using ggplot
+ggplot(dfr_no_outliers, aes(x = dti)) +
+  geom_histogram(binwidth = 1, fill = "blue", color = "black", alpha = 0.7) +
+  labs(title = "Distribution of Debt-To-Income Ratio (Outliers Removed)",
+       x = "Debt-To-Income Ratio (%)",
+       y = "Frequency") +
+  theme_minimal()
+
+rm(dfr1)
+
+```
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+df1 <- df
+# Ensure the Debt-To-Income Ratio is numeric
+
+
+# Remove NA values (if any) in Debt-To-Income Ratio
+df1 <- df1 %>% filter(!is.na(dti))
+
+# Define a function to remove outliers based on IQR
+remove_outliers <- function(data) {
+  Q1 <- quantile(data$dti, 0.25, na.rm = TRUE)  # 1st quartile (25th percentile)
+  Q3 <- quantile(data$dti, 0.75, na.rm = TRUE)  # 3rd quartile (75th percentile)
+  IQR <- Q3 - Q1  # Interquartile range
+  lower_bound <- Q1 - 1.5 * IQR
+  upper_bound <- Q3 + 1.5 * IQR
+  data %>%
+    filter(dti >= lower_bound & dti <= upper_bound)  # Remove outliers
+}
+
+# Apply the function to remove outliers
+dfr_no_outliers <- remove_outliers(df1)
+
+# Create the distribution plot using ggplot
+ggplot(dfr_no_outliers, aes(x = dti)) +
+  geom_histogram(binwidth = 0.5, fill = "blue", color = "black", alpha = 0.7) +
+  labs(title = "Distribution of Debt-To-Income Ratio (Outliers Removed)",
+       x = "Debt-To-Income Ratio (%)",
+       y = "Frequency") +
+  theme_minimal()
+
+rm(df1)
 ```
