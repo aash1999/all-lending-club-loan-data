@@ -25,7 +25,7 @@ options(scientific=T, digits = 3)
 
 # Overview
 
-Since 2006, LendingClub has been a U.S. financial services company that has facilitated loan contracts. Our research will focus on LendingClub's loan data that consist of approved and rejected loans between 2013-2018. To understand LendingClub's clientele, we will analyzie borrower characteristics to assess risk levels, determine loan acceptance, and predict whether accepted loans will be fully repaid.To accomplish this, we will ask the following SMART questions:
+Since 2006, LendingClub has been a U.S. financial services company that has facilitated loan contracts. Our research will focus on LendingClub's loan data that consist of approved and rejected loans between 2013-2018. To understand LendingClub’s clientele, we will analyze borrower and loan characteristics to assess risk levels, determine loan acceptance, and understand what factors influence whether accepted loans will be fully repaid. To accomplish this, we will ask the following SMART questions:
 
 
 1. How do the loan features of term, amount, and interest rate influence the likelihood of a loan being charged off (lender has accepted the loan as unlikely to recover) versus being fully paid? 
@@ -45,6 +45,7 @@ Since 2006, LendingClub has been a U.S. financial services company that has faci
 3. Term: How long the borrower has to pay off the loan (Either 36 or 60 Months).
 
 4. Interest Rate: The percentage of the loan amount that the lender charges the borrower for borrowing money. 
+
 
 
 
