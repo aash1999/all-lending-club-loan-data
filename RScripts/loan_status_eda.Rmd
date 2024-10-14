@@ -510,91 +510,60 @@ There is a **significant association** between **home ownership status** and **l
 ```{r}
 
 # Load necessary libraries
-library(data.table)  # For data manipulation
-library(fmsb)        # For radar chart
-library(dplyr)       # For data manipulation
-library(tidyr)       # For data manipulation
+library(ggplot2)
+library(dplyr)
+library(lubridate)
 
 df1 <- df
-
 # Ensure issue_d is in Date format
-df1$issue_d <- as.Date(df1$issue_d)
+df1$issue_d <- as.Date(df1$issue_d, format = "%b-%Y")
 
-# Create a period variable
-df1$period <- ifelse(df1$issue_d < as.Date("2015-01-01"), "Before 2015", "After 2015")
+# Filter out rows where issue_d is NA
+df1 <- df1 %>%
+  filter(!is.na(issue_d))
 
-# Function to create summary data for radar chart
-create_radar_data <- function(data) {
+# Extract year and quarter from issue_d
+df1$quarter <- paste0("Q", quarter(df1$issue_d), " ", year(df1$issue_d))
+
+# Filter the data for only "Charged Off" and "Fully Paid" loan statuses
+df_filtered <- df1 %>%
+  filter(loan_status %in% c("Charged Off", "Fully Paid"))
+
+# Define a function to remove outliers based on IQR
+remove_outliers <- function(data) {
+  Q1 <- quantile(data$dti, 0.25, na.rm = TRUE)
+  Q3 <- quantile(data$dti, 0.75, na.rm = TRUE)
+  IQR <- Q3 - Q1
+  lower_bound <- Q1 - 1.5 * IQR
+  upper_bound <- Q3 + 1.5 * IQR
   data %>%
-    filter(loan_status %in% c("Fully Paid", "Charged Off")) %>%  # Filter for specific loan statuses
-    group_by(loan_status) %>%
-    summarise(
-      median_int_rate = median(int_rate, na.rm = TRUE),
-      median_annual_inc = median(annual_inc, na.rm = TRUE),
-      median_dti = median(dti, na.rm = TRUE),
-      median_fico_range_low = median(fico_range_low, na.rm = TRUE),
-      median_fico_range_high = median(fico_range_high, na.rm = TRUE),
-      median_revol_util = median(revol_util, na.rm = TRUE),
-      .groups = 'drop'  # Prevent warning about grouping
-    ) %>%
-    pivot_wider(names_from = loan_status, 
-                values_from = starts_with("median_"), 
-                values_fill = list(median_int_rate = 0, 
-                                   median_annual_inc = 0, 
-                                   median_dti = 0, 
-                                   median_fico_range_low = 0, 
-                                   median_fico_range_high = 0, 
-                                   median_revol_util = 0),
-                names_prefix = "median_")  # Prefix the column names for clarity
+    filter(dti >= lower_bound & dti <= upper_bound)
 }
 
-# Create radar data for both periods
-before_radar_data <- create_radar_data(df1[period == "Before 2015"])
-after_radar_data <- create_radar_data(df1[period == "After 2015"])
+# Remove outliers by applying the function to each quarter and loan_status group
+df_no_outliers <- df_filtered %>%
+  group_by(quarter, loan_status) %>%
+  do(remove_outliers(.))
 
-# Function to plot radar chart
-plot_radar <- function(data, title) {
-  # Ensure data is a data frame
-  data <- as.data.frame(data)
-  
-  # Ensure all data columns are numeric
-  data[-1] <- lapply(data[-1], as.numeric)
-  
-  # Create max and min vectors based on numeric columns
-  max_values <- apply(data[, -1], 2, max, na.rm = TRUE)
-  min_values <- apply(data[, -1], 2, min, na.rm = TRUE)
+# Ensure proper order of quarters
+df_no_outliers$quarter <- factor(df_no_outliers$quarter, 
+                                 levels = unique(df_no_outliers$quarter[order(df_no_outliers$issue_d)]))
 
-  # Combine max, min, and the data
-  radar_data <- rbind(max_values, min_values, data[, -1])
-  
-  # Set row names for the radar chart
-  row.names(radar_data) <- c("Max", "Min", as.character(data[[1]]))
-
-  # Plot radar chart with reduced text size
-  radarchart(radar_data, axistype = 1,
-             pcol = c("red", "green"),
-             plwd = 2,
-             plty = 1,
-             title = title,
-             cglcol = "grey",    # Color of grid lines
-             cglty = 1,          # Type of grid lines
-             axislabcol = "black", # Axis label color
-             caxislabels = seq(0, 100, 20),  # Customize axis labels
-             cex.axis = 0.7,     # Size of axis labels
-             cex.main = 0.8,     # Size of title
-             pbg = NA)           # Background color for polygon
-}
-
-# Plot radar charts
-par(mfrow = c(1, 2))  # Set up the plotting area for two plots
-plot_radar(before_radar_data, "Before 2015")
-plot_radar(after_radar_data, "After 2015")
-
+# Plot box plot for dti for each quarter with loan_status distinction (without outliers)
+ggplot(df_no_outliers, aes(x = quarter, y = dti, fill = loan_status)) +
+  geom_boxplot() +
+  labs(title = "DTI Box Plot by Quarter for Charged Off and Fully Paid Loans (Outliers Removed)",
+       x = "Quarter",
+       y = "DTI",
+       fill = "Loan Status") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for readability
 
 ```
 
 
+```{r}
 
+```
 
 
 
