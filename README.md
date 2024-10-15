@@ -59,7 +59,12 @@
 | Task                          | Assignee           | Branch Name         | Status (❓, 🔄, ✅)           
 |-------------------------------|--------------------|---------------------|-------------------
 | Git Setup                     | Singh, Aakash      | Main                | ✅ Done           
-| Invistigate Dataset           | Singh, Aakash      | singh-aakash        | 🔄 In-Progress
+| Invistigate Dataset           | Singh, Aakash      | singh-aakash        | ✅ Done
+| Completed Intial Phase        | Singh, Aakash      | singh-aakash        | ✅ Done
+| Merge with Main Branch        | Singh, Aakash      | singh-aakash        | ✅ Done
+| Merge All the branches        | Singh, Aakash      | singh-aakash        | 🔄 In-Progress
+| Compile one Rmd File          | All                | Main                | 🔄 In-Progress
+
 
 ## Contributors
 
