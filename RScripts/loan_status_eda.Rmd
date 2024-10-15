@@ -35,6 +35,7 @@ df_file_path = "../DataSet/filtered_accepted_2013_to_2018Q4.csv"
 # Load Dataset
 df_100 <- fetch_subset(df_file_path, col_names = c(-1), nrows = c(1, 100), chunk_size = 1e5)
 
+
 ```
 
 ## List of Column names 
@@ -42,6 +43,7 @@ df_100 <- fetch_subset(df_file_path, col_names = c(-1), nrows = c(1, 100), chunk
 ```{r}
 col_names <- names(df_100)
 print(sort(col_names))
+rm(df_100)
 ```
 ## \# of Observations
 
@@ -58,7 +60,7 @@ columns_to_target = c("annual_inc", "dti", "fico_range_high", "fico_range_low", 
   "int_rate", "earliest_cr_line", "revol_util", "delinq_2yrs", "pub_rec", 
   "total_acc", "open_acc", "installment", "home_ownership", 
   "verification_status", "delinq_amnt", "collections_12_mths_ex_med", 
-  "chargeoff_within_12_mths", "mths_since_last_delinq", "purpose", "sub_grade", "issue_d", "addr_state","inq_last_12m","loan_status")
+  "chargeoff_within_12_mths", "mths_since_last_delinq", "purpose", "sub_grade", "issue_d", "addr_state","inq_last_12m","loan_status","chargeoff_within_12_mths")
 
 
 df <- fetch_subset(df_location = df_file_path, col_names = columns_to_target, nrows = c(1,-1))
@@ -77,11 +79,20 @@ convert_to_factors <- function(df) {
   
   df[] <- lapply(names(df), function(col) {
     if (col %in% factor_cols) {
-      return(as.factor(df[[col]]))
+      # Check if the column contains numeric-like values as strings and standardize them
+      if (col == "chargeoff_within_12_mths") {
+        # Convert '0.0' and '0' to '0', and handle similar cases
+        df[[col]] <- as.character(df[[col]])
+        df[[col]][df[[col]] == "0.0"] <- "0"
+        df[[col]][df[[col]] == "1.0"] <- "1"  # If applicable, handle '1.0' similar to '1'
+        return(as.factor(df[[col]]))  # Convert the cleaned column to factor
+      } else {
+        return(as.factor(df[[col]]))  # Convert other factor columns directly
+      }
     } else if (is.character(df[[col]]) && all(!is.na(as.numeric(df[[col]][-1])))) {
-      return(as.numeric(df[[col]]))
+      return(as.numeric(df[[col]]))  # Convert numeric-like strings to numeric
     } else {
-      return(df[[col]])
+      return(df[[col]])  # Leave other columns unchanged
     }
   })
   
@@ -100,7 +111,7 @@ df$revol_util <- as.numeric(df$revol_util)
 df$mths_since_last_delinq <- as.numeric(df$mths_since_last_delinq)
 df$dti <- as.numeric(df$dti)
 df$inq_last_12m <- as.numeric(df$inq_last_12m)
-
+df$chargeoff_within_12_mths <- as.numeric(df$chargeoff_within_12_mths)
 
 # Optional: Check for any warnings about NAs being introduced during coercion
 if (any(is.na(df$revol_util))) {
@@ -117,6 +128,172 @@ if (any(is.na(df$dti))) {
 ```{r}
 str(df)
 ```
+
+
+
+
+```{r}
+# Required Libraries
+library(fmsb)
+library(data.table)
+
+# Step 1: Filter DataFrames for loans issued before and after 2015
+df_before_2015 <- df[issue_d <= "2015-12-31"]
+df_after_2015 <- df[issue_d > "2015-12-31"]
+
+# Step 2: Function to remove outliers using IQR
+remove_outliers <- function(df, selected_cols) {
+  for (col in selected_cols) {
+    Q1 <- quantile(df[[col]], 0.25, na.rm = TRUE)
+    Q3 <- quantile(df[[col]], 0.75, na.rm = TRUE)
+    IQR <- Q3 - Q1
+    
+    # Filtering out the outliers
+    df <- df[df[[col]] >= (Q1 - 1.5 * IQR) & df[[col]] <= (Q3 + 1.5 * IQR)]
+  }
+  return(df)
+}
+
+# Step 3: Select the columns of interest for standardization and outlier removal
+selected_columns <- c("int_rate", "annual_inc", "fico_range_low", "fico_range_high", "dti")
+
+# Remove outliers in each group
+df_before_2015 <- remove_outliers(df_before_2015, selected_columns)
+df_after_2015 <- remove_outliers(df_after_2015, selected_columns)
+
+# Step 4: Function to standardize numeric columns (scaling from 0 to 1)
+standardize_columns <- function(df, selected_cols) {
+  df[, (selected_cols) := lapply(.SD, function(x) (x - min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE) - min(x, na.rm = TRUE))), 
+       .SDcols = selected_cols]
+  return(df)
+}
+
+# Standardize the selected columns in each group
+df_before_2015 <- standardize_columns(df_before_2015, selected_columns)
+df_after_2015 <- standardize_columns(df_after_2015, selected_columns)
+
+# Step 5: Calculate the medians for selected numeric columns
+medians_before_2015 <- df_before_2015[, lapply(.SD, median, na.rm = TRUE), .SDcols = selected_columns]
+medians_after_2015 <- df_after_2015[, lapply(.SD, median, na.rm = TRUE), .SDcols = selected_columns]
+
+# Step 6: Combine the medians into a data frame for radar chart
+radar_data <- rbind(as.data.frame(medians_before_2015), 
+                    as.data.frame(medians_after_2015))
+
+# Step 7: Assign appropriate row names for each category
+rownames(radar_data) <- c("Before 2015", "After 2015")
+
+# Step 8: Add max and min rows for radar chart
+radar_data <- rbind(max = rep(1, ncol(radar_data)), 
+                    min = rep(0, ncol(radar_data)), 
+                    radar_data)
+print(radar_data)
+
+par(bg = "white")  # Set the background color to white
+
+radarchart(radar_data, 
+           axistype = 1,  # Set axis type
+           pcol = c("#1E90FF", "#32CD32"),  # Brighter line colors for Before 2015 and After 2015
+           plty = 1,  # Line type
+           title = "Comparison of Loan Variables (Before 2015 vs. After 2015)",
+           cglcol = "lightgrey",  # Lighter grid line color
+           cglty = 1,  # Type of the grid lines
+           caxislabels = seq(0, 1, 0.05),  # Customize axis labels (0 to 1 range)
+           axislabcol = "black",  # Axis label color (changed to black for better visibility)
+           vlcex = 0.8,  # Text size of labels
+           titlecol = "black",  # Title color (changed to black for better visibility)
+           cglwd = 0.8)  # Thickness of the grid lines
+
+# Add legend to the radar chart
+legend("topright",  # Position of the legend
+       legend = c("Before 2015", "After 2015"),  # Labels for the legend
+       col = c("#1E90FF", "#32CD32"),  # Corresponding bright colors
+       lty = 1,  # Line type in the legend
+       bty = "n",  # No box around the legend
+       text.col = "black",  # Text color for the legend (changed to black for better visibility)
+       cex = 0.8)  # Text size of the legend
+
+# Adding additional options for text elements
+# This ensures any remaining text is also white
+
+
+```
+
+
+
+
+```{r}
+# Required Libraries
+library(fmsb)
+library(data.table)
+
+# Step 1: Filter DataFrames for loans issued in 2014 and 2016
+df_2014 <- df[issue_d == "2014-12-31"]
+df_2016 <- df[issue_d == "2016-12-31"]
+
+# Step 2: Function to remove outliers using IQR
+remove_outliers <- function(df, selected_cols) {
+  for (col in selected_cols) {
+    Q1 <- quantile(df[[col]], 0.25, na.rm = TRUE)
+    Q3 <- quantile(df[[col]], 0.75, na.rm = TRUE)
+    IQR <- Q3 - Q1
+    
+    # Filtering out the outliers
+    df <- df[df[[col]] >= (Q1 - 1.5 * IQR) & df[[col]] <= (Q3 + 1.5 * IQR)]
+  }
+  return(df)
+}
+
+# Step 3: Select the columns of interest for outlier removal
+selected_columns <- c("int_rate", "annual_inc", "fico_range_low", "fico_range_high")
+
+# Remove outliers in each group
+df_2014 <- remove_outliers(df_2014, selected_columns)
+df_2016 <- remove_outliers(df_2016, selected_columns)
+
+# Step 4: Calculate the medians for selected numeric columns
+medians_2014 <- df_2014[, lapply(.SD, median, na.rm = TRUE), .SDcols = selected_columns]
+medians_2016 <- df_2016[, lapply(.SD, median, na.rm = TRUE), .SDcols = selected_columns]
+
+# Step 5: Combine the medians into a data frame for radar chart
+radar_data <- rbind(as.data.frame(medians_2014), 
+                    as.data.frame(medians_2016))
+
+# Step 6: Assign appropriate row names for each category
+rownames(radar_data) <- c("2014", "2016")
+
+# Step 7: Add max and min rows for radar chart
+radar_data <- rbind(max = c(1, 1, 1, 1),  # Adjust based on expected max for visualization
+                    min = c(0, 0, 0, 0),  # Minimum values for standardized data
+                    radar_data)
+
+# Step 8: Plot the radar chart with a dark theme
+par(bg = "black")  # Set the background color to black
+
+radarchart(radar_data, 
+           axistype = 1,  # Set axis type
+           pcol = c("#1E90FF", "#32CD32"),  # Brighter line colors for 2014 and 2016
+           plty = 1,  # Line type
+           title = "Comparison of Loan Variables (2014 vs. 2016)",
+           cglcol = "darkgrey",  # Darker grid line color
+           cglty = 1,  # Type of the grid lines
+           caxislabels = seq(0, 1, 0.1),  # Customize axis labels for standardized data
+           axislabcol = "white",  # Axis label color
+           vlcex = 0.8,  # Text size of labels
+           titlecol = "white",  # Title color
+           cglwd = 0.8)  # Thickness of the grid lines
+
+# Add legend to the radar chart
+legend("topright",  # Position of the legend
+       legend = c("2014", "2016"),  # Labels for the legend
+       col = c("#1E90FF", "#32CD32"),  # Corresponding bright colors
+       lty = 1,  # Line type in the legend
+       bty = "n",  # No box around the legend
+       text.col = "white",  # Text color for the legend
+       cex = 0.8)  # Text size of the legend
+
+```
+
 
 ```{r}
 # Count the number of NA values in each column
