@@ -7,3 +7,4 @@ all-lending-club-loan-data.Rproj
 *.twb
 *.RData
 *.RDataTmp
+*.RDataTmp1
