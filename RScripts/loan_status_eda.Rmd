@@ -574,80 +574,29 @@ dfr <- dfr %>% sample_frac(0.25)
 
 
 
+
+
+
+
+
+
+
+
 ```{r}
 # Load necessary libraries
 library(ggplot2)
 library(dplyr)
-library(lubridate)
 
-df1 <- df
 dfr1 <- dfr
-set.seed(123)  # For reproducibility
-dfr1 <- dfr1 %>% sample_frac(0.3)
 
-# Ensure issue_d is in Date format in df
-df1$issue_d <- as.Date(df1$issue_d, format = "%b-%Y")
-
-# Ensure Application Date is in Date format in dfr
-dfr1$`Application Date` <- as.Date(dfr1$`Application Date`, format = "%Y-%m-%d")
-
-# Standardize column names
-dfr1 <- dfr1 %>%
-  rename(issue_d = `Application Date`,  # Rename Application Date to issue_d for consistency
-         dti = `Debt-To-Income Ratio`)  # Rename Debt-To-Income Ratio to dti
-
-# Create a source column to distinguish datasets
-df1$source <- "Accepted"
-dfr1$source <- "Rejected"
-
-# Convert dti to numeric and filter out values greater than 100
-df1$dti <- as.numeric(df1$dti)
-dfr1$dti <- as.numeric(gsub("%", "", dfr1$dti)) 
-
-# Filter both datasets to remove dti > 100
-df1 <- df1 %>% filter(dti <= 100)
-dfr1 <- dfr1 %>% filter(dti <= 100)  # Adjusted for percentage conversion
-
-# Combine the two datasets
-combined_df <- bind_rows(df1, dfr1)
-
-# Bin the dti values (you can adjust the bin width based on your data)
-bin_width <- 0.5  # Adjust as needed for percentage
-combined_df <- combined_df %>%
-  mutate(dti_bin = cut(dti, breaks = seq(0, 1, by = bin_width), right = FALSE))
-
-# Count the frequency of each dti_bin for each source
-dti_freq <- combined_df %>%
-  group_by(dti_bin, source) %>%
-  summarise(freq = n(), .groups = 'drop')
-
-# Convert dti_bin to numeric for plotting
-dti_freq$dti_bin_num <- as.numeric(as.character(gsub("\\[|,.*", "", dti_freq$dti_bin)))
-
-# Plot the line graph showing the frequency of dti values for both sources
-ggplot(dti_freq, aes(x = dti_bin_num, y = freq, color = source)) +
-  geom_line(size = 1) +
-  labs(title = "Frequency of DTI for Accepted and Rejected Loans (DTI <= 100)",
-       x = "DTI",
-       y = "Frequency",
-       color = "Source") +
-  scale_x_continuous(labels = scales::percent_format(accuracy = 0.01)) +  # Format x-axis as percentage
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for readability
-rm(df1)
-rm(dfr1)
-
-```
-```{r}
-# Load necessary libraries
-library(ggplot2)
-library(dplyr)
-dfr1 <- dfr
 # Ensure the Debt-To-Income Ratio is numeric
 dfr1$dti <- as.numeric(gsub("%", "", dfr1$`Debt-To-Income Ratio`))  # Remove '%' and convert to numeric
 
-# Remove NA values (if any) in Debt-To-Income Ratio
-dfr1 <- dfr1 %>% filter(!is.na(dti))
+# Ensure the Application Date is in Date format
+dfr1$`Application Date` <- as.Date(dfr1$`Application Date`, format = "%Y-%m-%d")
+
+# Remove NA values (if any) in Debt-To-Income Ratio and Application Date
+dfr1 <- dfr1 %>% filter(!is.na(dti) & !is.na(`Application Date`))
 
 # Define a function to remove outliers based on IQR
 remove_outliers <- function(data) {
@@ -663,15 +612,31 @@ remove_outliers <- function(data) {
 # Apply the function to remove outliers
 dfr_no_outliers <- remove_outliers(dfr1)
 
-# Create the distribution plot using ggplot
-ggplot(dfr_no_outliers, aes(x = dti)) +
-  geom_histogram(binwidth = 1, fill = "blue", color = "black", alpha = 0.7) +
-  labs(title = "Distribution of Debt-To-Income Ratio (Outliers Removed)",
-       x = "Debt-To-Income Ratio (%)",
-       y = "Frequency") +
-  theme_minimal()
+# Split the data into before and after 2015
+dfr_before_2015 <- dfr_no_outliers %>% filter(`Application Date` < as.Date("2015-01-01"))
+dfr_after_2015 <- dfr_no_outliers %>% filter(`Application Date` >= as.Date("2015-01-01"))
 
+# Create the frequency distribution plot using ggplot
+ggplot() +
+  geom_histogram(data = dfr_before_2015, aes(x = dti, y = ..count.., color = "Before 2015", fill = "Before 2015"), 
+                 binwidth = 1, alpha = 0.4, position = "identity") +
+  geom_histogram(data = dfr_after_2015, aes(x = dti, y = ..count.., color = "After 2015", fill = "After 2015"), 
+                 binwidth = 1, alpha = 0.4, position = "identity") +
+  labs(title = "Frequency Distribution of Debt-To-Income Ratio (Before and After 2015)",
+       x = "Debt-To-Income Ratio (%)",
+       y = "Frequency",
+       color = "Period",
+       fill = "Period") +
+  theme_minimal() +
+  scale_color_manual(values = c("Before 2015" = "blue", "After 2015" = "red")) +
+  scale_fill_manual(values = c("Before 2015" = "blue", "After 2015" = "red")) +
+  theme(legend.position = "top")
+
+# Optional: Clean up memory
 rm(dfr1)
+rm(dfr_no_outliers)
+rm(dfr_before_2015)
+rm(dfr_after_2015)
 
 ```
 
@@ -679,12 +644,17 @@ rm(dfr1)
 # Load necessary libraries
 library(ggplot2)
 library(dplyr)
-df1 <- df
+
+dfr1 <- df
+
 # Ensure the Debt-To-Income Ratio is numeric
 
 
-# Remove NA values (if any) in Debt-To-Income Ratio
-df1 <- df1 %>% filter(!is.na(dti))
+# Ensure the Application Date is in Date format
+dfr1$issue_d <- as.Date(dfr1$issue_d, format = "%Y-%m-%d")
+
+# Remove NA values (if any) in Debt-To-Income Ratio and Application Date
+dfr1 <- dfr1 %>% filter(!is.na(dti) & !is.na(issue_d))
 
 # Define a function to remove outliers based on IQR
 remove_outliers <- function(data) {
@@ -698,15 +668,89 @@ remove_outliers <- function(data) {
 }
 
 # Apply the function to remove outliers
-dfr_no_outliers <- remove_outliers(df1)
+dfr_no_outliers <- remove_outliers(dfr1)
 
-# Create the distribution plot using ggplot
-ggplot(dfr_no_outliers, aes(x = dti)) +
-  geom_histogram(binwidth = 0.5, fill = "blue", color = "black", alpha = 0.7) +
-  labs(title = "Distribution of Debt-To-Income Ratio (Outliers Removed)",
+# Split the data into before and after 2015
+dfr_before_2015 <- dfr_no_outliers %>% filter(issue_d < as.Date("2015-01-01"))
+dfr_after_2015 <- dfr_no_outliers %>% filter(issue_d >= as.Date("2015-01-01"))
+
+# Create the frequency distribution plot using ggplot
+ggplot() +
+  geom_histogram(data = dfr_before_2015, aes(x = dti, y = ..count.., color = "Before 2015", fill = "Before 2015"), 
+                 binwidth = 1, alpha = 0.4, position = "identity") +
+  geom_histogram(data = dfr_after_2015, aes(x = dti, y = ..count.., color = "After 2015", fill = "After 2015"), 
+                 binwidth = 1, alpha = 0.4, position = "identity") +
+  labs(title = "Frequency Distribution of Debt-To-Income Ratio (Before and After 2015)",
        x = "Debt-To-Income Ratio (%)",
-       y = "Frequency") +
-  theme_minimal()
+       y = "Frequency",
+       color = "Period",
+       fill = "Period") +
+  theme_minimal() +
+  scale_color_manual(values = c("Before 2015" = "blue", "After 2015" = "red")) +
+  scale_fill_manual(values = c("Before 2015" = "blue", "After 2015" = "red")) +
+  theme(legend.position = "top")
 
-rm(df1)
+# Optional: Clean up memory
+rm(dfr1)
+rm(dfr_no_outliers)
+rm(dfr_before_2015)
+rm(dfr_after_2015)
+
 ```
+
+```{r}
+
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+dfr1 <- dfr
+
+# Ensure the Debt-To-Income Ratio is numeric
+dfr1$dti <- as.numeric(gsub("%", "", dfr1$`Risk_Score`))  # Remove '%' and convert to numeric
+
+# Ensure the Application Date is in Date format
+dfr1$`Application Date` <- as.Date(dfr1$`Application Date`, format = "%Y-%m-%d")
+
+# Remove NA values (if any) in Debt-To-Income Ratio and Application Date
+dfr1 <- dfr1 %>% filter(!is.na(dti) & !is.na(`Application Date`))
+
+# Define a function to remove outliers based on IQR
+remove_outliers <- function(data) {
+  Q1 <- quantile(data$dti, 0.25, na.rm = TRUE)  # 1st quartile (25th percentile)
+  Q3 <- quantile(data$dti, 0.75, na.rm = TRUE)  # 3rd quartile (75th percentile)
+  IQR <- Q3 - Q1  # Interquartile range
+  lower_bound <- Q1 - 1.5 * IQR
+  upper_bound <- Q3 + 1.5 * IQR
+  data %>%
+    filter(dti >= lower_bound & dti <= upper_bound)  # Remove outliers
+}
+
+# Apply the function to remove outliers
+dfr_no_outliers <- remove_outliers(dfr1)
+
+# Split the data into before and after 2015
+dfr_before_2015 <- dfr_no_outliers %>% filter(`Application Date` < as.Date("2015-01-01"))
+dfr_after_2015 <- dfr_no_outliers %>% filter(`Application Date` >= as.Date("2015-01-01"))
+
+# Create the line distribution plot using ggplot
+ggplot() +
+  geom_density(data = dfr_before_2015, aes(x = dti, color = "Before 2015"), size = 1.2) +
+  geom_density(data = dfr_after_2015, aes(x = dti, color = "After 2015"), size = 1.2) +
+  labs(title = "Density Plot of Debt-To-Income Ratio (Before and After 2015)",
+       x = "Debt-To-Income Ratio (%)",
+       y = "Density",
+       color = "Period") +
+  theme_minimal() +
+  scale_color_manual(values = c("Before 2015" = "blue", "After 2015" = "red"))
+
+rm(dfr1)
+rm(dfr_no_outliers)
+rm(dfr_before_2015)
+rm(dfr_after_2015)
+
+
+```
+
+
+
