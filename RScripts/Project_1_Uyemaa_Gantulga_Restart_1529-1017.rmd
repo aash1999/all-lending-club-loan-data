@@ -1,0 +1,582 @@
+---
+title: "Project one: Lending Club Data Analysis"
+author: "Uyemaa Gantulga"
+date: "10/15/2024"
+output:
+  html_document: 
+    code_folding: show
+    toc: true
+    toc_float: true
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+---
+
+### Setting up
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE, include = TRUE)
+library(knitr)
+library(dplyr)
+library(ggplot2)
+library(kableExtra)
+library(stats)
+
+```
+
+### Load data - See what is in the dataset
+
+```{r}
+accepted_loans <- read.csv("C:\\Users\\uemaa\\Documents\\Data Science\\Project 1\\cleaned_accepted_2013_to_2018Q4.csv")
+rejected_loans <- read.csv("C:\\Users\\uemaa\\Documents\\Data Science\\Project 1\\cleaned_rejected_2013_to_2018Q4.csv")
+```
+
+### Column names
+
+```{r}
+colnames(accepted_loans)
+colnames(rejected_loans)
+```
+
+### Structure of accepted 
+
+```{r}
+str(accepted_loans)
+```
+
+### Structure of rejected
+
+```{r}
+str(rejected_loans)
+```
+
+### Summary of accepted and rejected loans
+
+```{r}
+summary(accepted_loans)
+summary(rejected_loans)
+```
+
+
+#Data cleaning see what are in the 
+```{r}
+unique(rejected_loans$emp_length)
+unique(accepted_loans$employement.length)
+
+```
+
+#Data cleaning, bringing the numbers to numeric value in employment length data
+
+
+```{r}
+# copy of the Employment.Length column for rejected loans and emp_length for accepted loans
+rejected_loans$emp_length_cleaned <- rejected_loans$Employment.Length
+accepted_loans$emp_length_cleaned <- accepted_loans$emp_length
+
+# Replace "< 1 year" with 0.5, "10+ years" with 10, and remove "years"
+rejected_loans$emp_length_cleaned <- gsub("< 1", "0.5", rejected_loans$emp_length_cleaned)
+rejected_loans$emp_length_cleaned <- gsub("10\\+ years", "10", rejected_loans$emp_length_cleaned)
+rejected_loans$emp_length_cleaned <- gsub(" years", "", rejected_loans$emp_length_cleaned)
+
+accepted_loans$emp_length_cleaned <- gsub("< 1", "0.5", accepted_loans$emp_length_cleaned)
+accepted_loans$emp_length_cleaned <- gsub("10\\+ years", "10", accepted_loans$emp_length_cleaned)
+accepted_loans$emp_length_cleaned <- gsub(" years", "", accepted_loans$emp_length_cleaned)
+
+# Convert to numeric
+rejected_loans$emp_length_cleaned <- as.numeric(rejected_loans$emp_length_cleaned)
+accepted_loans$emp_length_cleaned <- as.numeric(accepted_loans$emp_length_cleaned)
+
+# Result check
+summary(rejected_loans$emp_length_cleaned)
+summary(accepted_loans$emp_length_cleaned)
+
+
+```
+
+# Data cleaning, understanding the amount requested column value
+
+```{r}
+# Cleaning loan amount in accepted loans
+accepted_loans$loan_amnt_cleaned <- accepted_loans$loan_amnt
+
+# Ensure it is numeric (remove any non-numeric characters just in case)
+accepted_loans$loan_amnt_cleaned <- as.numeric(gsub("[^0-9.]", "", accepted_loans$loan_amnt_cleaned))
+
+# Check if any NA values were introduced during the conversion
+sum(is.na(accepted_loans$loan_amnt_cleaned))
+summary(accepted_loans$loan_amnt_cleaned)
+
+```
+
+```{r}
+
+head(rejected_loans$Amount.Requested)
+
+```
+
+```{r}
+
+# Cleaning amount.requested in rejected loans
+rejected_loans$amount_requested_cleaned <- rejected_loans$Amount.Requested
+
+# Ensure it is numeric (remove any non-numeric characters)
+rejected_loans$amount_requested_cleaned <- as.numeric(gsub("[^0-9.]", "", rejected_loans$amount_requested_cleaned))
+
+# Check if any NA values were introduced during the conversion
+sum(is.na(rejected_loans$amount_requested_cleaned))
+summary(rejected_loans$amount_requested_cleaned)
+
+```
+
+
+## Question 4: Is there a relationship between employment length and the amount requested for rejected loans and how does it compare to the customers that had accepted loan
+
+#EDA
+#Deb to income ratio reflected in the both loans.DTI is reflected as dti and dti_joint in the accepted dataset, and as deb.to.income.ratio in the 
+#rejected dataset. 
+
+```{r}
+
+# Boxplot for accepted loans: Employment Length vs Loan Amount
+ggplot(accepted_loans, aes(x = as.factor(emp_length_cleaned), y = loan_amnt_cleaned)) +
+  geom_boxplot(fill = "lightblue", color = "black") +
+  ggtitle("Accepted Loans: Employment Length vs Loan Amount") +
+  xlab("Employment Length (years)") +
+  ylab("Loan Amount") +
+  theme_minimal()
+```
+
+
+#Working on the rejected loan set, cleaning the outliers.
+
+```{r}
+# Calculate Q1, Q3, and IQR for amount requested
+Q1 <- quantile(rejected_loans$amount_requested_cleaned, 0.25, na.rm = TRUE)
+Q3 <- quantile(rejected_loans$amount_requested_cleaned, 0.75, na.rm = TRUE)
+IQR <- Q3 - Q1
+
+# Define lower and upper bound
+lower_bound <- Q1 - 1.5 * IQR
+upper_bound <- Q3 + 1.5 * IQR
+
+# Filter out outliers
+rejected_loans_filtered <- rejected_loans %>%
+  filter(amount_requested_cleaned >= lower_bound & amount_requested_cleaned <= upper_bound)
+
+# Check summary statistics of filtered data
+summary(rejected_loans_filtered$amount_requested_cleaned)
+
+```
+```{r}
+# Number of observations before removing outliers
+num_before <- nrow(rejected_loans)
+print(paste("Number of observations before cleaning:", num_before))
+
+# Number of observations after removing outliers
+num_after <- nrow(rejected_loans_filtered)
+print(paste("Number of observations after cleaning:", num_after))
+
+Num_outliers <- (num_before - num_after)
+print(paste("NUmber of outliers cleaned:", Num_outliers))
+```
+
+#creating boxplot for outliers exempted data
+
+```{r}
+# Boxplot without outliers
+ggplot(rejected_loans_filtered, aes(x = as.factor(emp_length_cleaned), y = amount_requested_cleaned)) +
+  geom_boxplot(fill = "lightcoral", color = "black") +
+  ggtitle("Rejected Loans: Employment Length vs Amount Requested (Outliers Removed)") +
+  xlab("Employment Length (years)") +
+  ylab("Amount Requested") +
+  theme_minimal()
+
+```
+#Density plot for the distribution of requested amount in the rejected loan dataset
+
+```{r}
+ggplot(rejected_loans_filtered, aes(x = amount_requested_cleaned)) +
+  geom_histogram(binwidth = 1000, fill = "skyblue", color = "black") +
+  ggtitle("Distribution of Amount Requested (Rejected Loans)") +
+  xlab("Amount Requested") +
+  ylab("Frequency")
+
+
+```
+```{r}
+# Plot the distribution of loan amounts for accepted loans
+ggplot(accepted_loans, aes(x = loan_amnt_cleaned)) +
+  geom_histogram(binwidth = 1000, fill = "lightgreen", color = "black") +
+  ggtitle("Distribution of Loan Amount (Accepted Loans)") +
+  xlab("Loan Amount") +
+  ylab("Frequency") +
+  theme_minimal()
+
+
+```
+#Debt to income ratio influencing the decision
+
+```{r}
+
+cor_result <- cor(rejected_loans$emp_length_cleaned, rejected_loans$amount_requested_cleaned, use = "complete.obs")
+print(paste("Correlation between Employment Length and Amount Requested:", cor_result))
+
+```
+# weak positive correlation in employment length and amount requested
+
+
+#Risk Score VS Employment Length
+
+```{r}
+# Scatter plot for Employment Length vs Risk Score with regression line
+ggplot(cleaned_data, aes(x = emp_length_cleaned, y = Risk_Score)) +
+  geom_point(alpha = 0.5, color = "blue") +
+  geom_smooth(method = "lm", formula = y ~ x, color = "red") +
+  ggtitle("Risk Score vs Employment Length with Regression Line") +
+  xlab("Employment Length (years)") +
+  ylab("Risk Score") +
+  theme_minimal()
+
+```
+# Number of observation and risk observation - rejected
+
+```{r}
+# Check the total number of observations in the dataset
+total_observations <- nrow(rejected_loans)
+print(paste("Total number of observations:", total_observations))
+
+# Check the number of observations with a non-missing Risk Score
+valid_risk_observations <- sum(!is.na(rejected_loans$Risk_Score))
+print(paste("Number of observations with valid Risk Score:", valid_risk_observations))
+
+# Check the number of missing Risk Scores
+missing_risk_observations <- sum(is.na(rejected_loans$Risk_Score))
+print(paste("Number of observations with missing Risk Score:", missing_risk_observations))
+# Summary statistics for Risk Score
+risk_score_summary <- summary(rejected_loans$Risk_Score)
+print(risk_score_summary)
+
+```
+#Missing value
+```{r}
+# Calculate the number of missing values for each variable
+missing_values <- sapply(rejected_loans, function(x) sum(is.na(x)))
+
+# Calculate the percentage of missing values for each variable
+total_rows <- nrow(rejected_loans)
+missing_percentages <- (missing_values / total_rows) * 100
+
+# Combine both into a data frame
+missing_data_df <- data.frame(
+  Variable = names(missing_values),
+  Missing_Values = missing_values,
+  Missing_Percentage = missing_percentages
+)
+
+# View the missing data frame
+print(missing_data_df)
+
+
+```
+
+##Employment length variables 87% of the employment length is not provided.
+
+```{r}
+# Find unique employment length values
+unique_employment_length <- unique(rejected_loans$Employment.Length)
+
+# Print the unique values
+print(unique_employment_length)
+
+```
+
+
+
+
+##Missing length variables
+```{r}
+# Find unique Risk Score values
+unique_risk_scores <- unique(rejected_loans$Risk_Score)
+
+# Print the unique Risk Score values
+print(unique_risk_scores)
+```
+#risk score count
+```{r}
+# Count the frequency of each Risk Score value
+risk_score_counts <- table(rejected_loans$Risk_Score)
+
+# View the counts for each Risk Score value
+print(risk_score_counts)
+```
+
+
+#Employee length VS loan amount and debt to income ratio
+#cleaning, numeric value
+
+```{r}
+# Ensure the columns are numeric for accepted loans
+accepted_loans$emp_length_cleaned <- as.numeric(accepted_loans$emp_length_cleaned)
+accepted_loans$dti_numeric <- as.numeric(accepted_loans$dti)
+accepted_loans$loan_amnt_cleaned <- as.numeric(accepted_loans$loan_amnt)
+
+# Ensure the columns are numeric for rejected loans
+rejected_loans$emp_length_cleaned <- as.numeric(rejected_loans$emp_length_cleaned)
+rejected_loans$Debt.To.Income.Ratio_numeric <- as.numeric(gsub("%", "", rejected_loans$Debt.To.Income.Ratio)) / 100
+rejected_loans$amount_requested_cleaned <- as.numeric(rejected_loans$Amount.Requested)
+```
+
+#Calculate the correlation with Employment length, loan amount, DTI amount
+
+```{r}
+# Correlation matrix for accepted loans
+cor_accepted <- cor(accepted_loans[, c("emp_length_cleaned", "loan_amnt_cleaned", "dti_numeric")], use = "complete.obs")
+print("Correlation Matrix for Accepted Loans")
+print(cor_accepted)
+
+# Correlation matrix for rejected loans
+cor_rejected <- cor(rejected_loans[, c("emp_length_cleaned", "amount_requested_cleaned", "Debt.To.Income.Ratio_numeric")], use = "complete.obs")
+print("Correlation Matrix for Rejected Loans")
+print(cor_rejected)
+```
+#Accepted loan Scatter plot with regression line
+
+#Employment length and Loan amount (accepted loans)
+```{r}
+# Scatter plot: Employment Length vs Loan Amount (Accepted Loans)
+ggplot(accepted_loans, aes(x = emp_length_cleaned, y = loan_amnt_cleaned)) +
+  geom_point(alpha = 0.5, color = "blue") +
+  geom_smooth(method = "lm", color = "red") +
+  ggtitle("Accepted Loans: Employment Length vs Loan Amount") +
+  xlab("Employment Length (years)") +
+  ylab("Loan Amount") +
+  theme_minimal()
+```
+
+
+
+
+#Employment length and loan amount (rejected loan)
+```{r}
+
+# Scatter plot: Employment Length vs DTI (Accepted Loans)
+ggplot(accepted_loans, aes(x = emp_length_cleaned, y = dti_numeric)) +
+  geom_point(alpha = 0.5, color = "blue") +
+  geom_smooth(method = "lm", color = "red") +
+  ggtitle("Accepted Loans: Employment Length vs DTI") +
+  xlab("Employment Length (years)") +
+  ylab("Debt-to-Income Ratio (DTI)") +
+  theme_minimal()
+
+
+```
+#
+#Rejected loan scatter plot with regression line 
+
+#Rejected loan Employment VS Amount requested
+```{r}
+# Scatter plot: Employment Length (Cleaned) vs Amount Requested (Rejected Loans)
+ggplot(rejected_loans, aes(x = emp_length_cleaned, y = amount_requested_cleaned)) +
+  geom_point(alpha = 0.5, color = "red") +
+  geom_smooth(method = "lm", color = "blue") +
+  ggtitle("Rejected Loans: Employment Length (Cleaned) vs Amount Requested") +
+  xlab("Employment Length (years, cleaned)") +
+  ylab("Amount Requested") +
+  theme_minimal()
+```
+# Rejected loan Employment length VS DTI
+```{r}
+# Scatter plot: Employment Length (Cleaned) vs Debt-to-Income Ratio (Rejected Loans)
+ggplot(rejected_loans, aes(x = emp_length_cleaned, y = Debt.To.Income.Ratio_numeric)) +
+  geom_point(alpha = 0.5, color = "red") +
+  geom_smooth(method = "lm", color = "blue") +
+  ggtitle("Rejected Loans: Employment Length (Cleaned) vs DTI") +
+  xlab("Employment Length (years, cleaned)") +
+  ylab("Debt-to-Income Ratio (DTI)") +
+  theme_minimal()
+
+```
+
+
+```{r}
+# Filter employment lengths between 1 and 10 years
+emp_length_filtered <- rejected_loans %>%
+  filter(emp_length_cleaned >= 1 & emp_length_cleaned <= 10)
+
+# Calculate the percentage of each employment length (1 to 10 years)
+emp_length_counts <- table(emp_length_filtered$emp_length_cleaned)
+emp_length_percentage <- prop.table(emp_length_counts) * 100
+
+# Convert to a data frame for easy plotting
+emp_length_df <- as.data.frame(emp_length_percentage)
+colnames(emp_length_df) <- c("Employment_Length", "Percentage")
+
+# Print the percentage table for reference
+print(emp_length_df)
+
+# Plot the data using a pie chart
+ggplot(emp_length_df, aes(x = "", y = Percentage, fill = factor(Employment_Length))) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  geom_text(aes(label = paste0(round(Percentage, 1), "%")), position = position_stack(vjust = 0.5)) +
+  ggtitle("Rejected Loans % by Employment Length") +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set3") +  # Colorful palette for the pie chart
+  labs(fill = "Years)")
+
+```
+#Accepted loan employment profile
+#
+
+```{r}
+# Filter employment lengths between 1 and 10 years for accepted loans
+emp_length_filtered_accepted <- accepted_loans %>%
+  filter(emp_length_cleaned >= 1 & emp_length_cleaned <= 10)
+
+# Calculate the percentage of each employment length (1 to 10 years)
+emp_length_counts_accepted <- table(emp_length_filtered_accepted$emp_length_cleaned)
+emp_length_percentage_accepted <- prop.table(emp_length_counts_accepted) * 100
+
+# Convert to a data frame for easy plotting
+emp_length_df_accepted <- as.data.frame(emp_length_percentage_accepted)
+colnames(emp_length_df_accepted) <- c("Employment_Length", "Percentage")
+
+# Print the percentage table for reference
+print(emp_length_df_accepted)
+
+# Plot the data using a pie chart
+ggplot(emp_length_df_accepted, aes(x = "", y = Percentage, fill = factor(Employment_Length))) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  geom_text(aes(label = paste0(round(Percentage, 1), "%")), position = position_stack(vjust = 0.5)) +
+  ggtitle("Accepted Loans % by Employment Length") +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set3") +  # Use a colorful palette for better visual appeal
+  labs(fill = "Years")
+
+
+
+```
+#Accepted loan analysis Employment VS loan grade   VS Annual income VS DTI
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+# 1. ANOVA: Employment Length vs Loan Grade
+anova_grade <- aov(emp_length_cleaned ~ grade, data = accepted_loans)
+anova_summary <- summary(anova_grade)
+
+# 2. Pearson Correlation: Employment Length vs Annual Income
+cor_emp_income <- cor.test(accepted_loans$emp_length_cleaned, accepted_loans$annual_inc, use = "complete.obs")
+
+# 3. Pearson Correlation: Employment Length vs DTI
+cor_emp_dti <- cor.test(accepted_loans$emp_length_cleaned, accepted_loans$dti_numeric, use = "complete.obs")
+
+# Create a summary table for results
+test_results <- data.frame(
+  Test = c("ANOVA: Employment Length vs Loan Grade", 
+           "Correlation: Employment Length vs Annual Income", 
+           "Correlation: Employment Length vs DTI"),
+  
+  Statistic = c(anova_summary[[1]][["F value"]][1], 
+                cor_emp_income$estimate, 
+                cor_emp_dti$estimate),
+  
+  P_Value = c(anova_summary[[1]][["Pr(>F)"]][1], 
+              cor_emp_income$p.value, 
+              cor_emp_dti$p.value)
+)
+
+# Print the summary table
+print(test_results)
+
+
+
+```
+
+
+
+# Statistical analysis between employment length and Amount requested DTI Risk score (rejected)
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+# Data Preparation: Ensure all variables are numeric
+rejected_loans$emp_length_cleaned <- as.numeric(rejected_loans$emp_length_cleaned)
+rejected_loans$amount_requested_cleaned <- as.numeric(rejected_loans$Amount.Requested)
+rejected_loans$Debt.To.Income.Ratio_numeric <- as.numeric(gsub("%", "", rejected_loans$Debt.To.Income.Ratio)) / 100
+rejected_loans$Risk_Score <- as.numeric(rejected_loans$Risk_Score)
+
+# Remove rows with missing values
+rejected_loans_cleaned <- rejected_loans %>%
+  filter(!is.na(emp_length_cleaned) & 
+         !is.na(amount_requested_cleaned) & 
+         !is.na(Debt.To.Income.Ratio_numeric) &
+         !is.na(Risk_Score))
+
+# 1. Pearson Correlation: Employment Length vs Amount Requested
+cor_emp_amount <- cor.test(rejected_loans_cleaned$emp_length_cleaned, rejected_loans_cleaned$amount_requested_cleaned, use = "complete.obs")
+
+# 2. Pearson Correlation: Employment Length vs DTI
+cor_emp_dti <- cor.test(rejected_loans_cleaned$emp_length_cleaned, rejected_loans_cleaned$Debt.To.Income.Ratio_numeric, use = "complete.obs")
+
+# 3. Linear Regression: Employment Length vs Risk Score
+reg_emp_risk <- lm(Risk_Score ~ emp_length_cleaned, data = rejected_loans_cleaned)
+summary_reg_emp_risk <- summary(reg_emp_risk)
+
+# Prepare the results for a table output
+test_results <- data.frame(
+  Test = c("Correlation: Employment Length vs Amount Requested",
+           "Correlation: Employment Length vs DTI",
+           "Linear Regression: Employment Length vs Risk Score"),
+  
+  Statistic = c(round(cor_emp_amount$estimate, 2), 
+                round(cor_emp_dti$estimate, 2),
+                round(summary_reg_emp_risk$coefficients[2, "t value"], 2)),
+  
+  P_Value = c(round(cor_emp_amount$p.value, 2), 
+              round(cor_emp_dti$p.value, 2),
+              round(summary_reg_emp_risk$coefficients[2, "Pr(>|t|)"], 2))
+)
+
+# Print the results
+print(test_results)
+
+```
+#
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#
+#
