@@ -104,9 +104,6 @@ if (any(is.na(df$dti))) {
 str(df)
 ```
 
-
-
-
 ```{r}
 # Required Libraries
 library(fmsb)
@@ -717,19 +714,264 @@ dfr <- fetch_subset(df_location = "../DataSet/filtered_rejected_2013_to_2018Q.cs
 
 ```
 ```{r}
+library(dplyr)
+library(ggplot2)
 set.seed(1)  # For reproducibility
 dfr <- dfr %>% sample_frac(0.25)
+```
+
+```{r}
+rm(df)
+```
+
+```{r}
+
+str(dfr)
+
+```
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+# Clone the original dataframe
+dfr1 <- dfr
+
+# Convert Application Date to Date format if not already done
+dfr1$Application_Date <- as.Date(dfr1$'Application Date')
+
+# Convert Risk_Score to numeric, handling NAs
+dfr1$Risk_Score <- as.numeric(dfr1$Risk_Score)
+
+# Convert Debt-To-Income Ratio to numeric by removing "%" and converting to decimal
+dfr1$Debt_To_Income_Ratio <- as.numeric(gsub("%", "", dfr1$`Debt-To-Income Ratio`)) / 100
+
+# Filter for application dates before and after 2015
+dfr_before_2015 <- dfr1 %>% filter(Application_Date < as.Date("2015-01-01"))
+dfr_after_2015 <- dfr1 %>% filter(Application_Date >= as.Date("2015-01-01"))
+
+# Define outlier removal function using IQR
+remove_outliers <- function(data) {
+  # Calculate Q1, Q3, and IQR for Risk_Score
+  Q1_risk <- quantile(data$Risk_Score, 0.25, na.rm = TRUE)
+  Q3_risk <- quantile(data$Risk_Score, 0.75, na.rm = TRUE)
+  IQR_risk <- IQR(data$Risk_Score, na.rm = TRUE)
+  
+  # Calculate Q1, Q3, and IQR for Debt_To_Income_Ratio
+  Q1_dti <- quantile(data$Debt_To_Income_Ratio, 0.25, na.rm = TRUE)
+  Q3_dti <- quantile(data$Debt_To_Income_Ratio, 0.75, na.rm = TRUE)
+  IQR_dti <- IQR(data$Debt_To_Income_Ratio, na.rm = TRUE)
+
+  # Filter data to remove outliers
+  data_filtered <- data %>%
+    filter(
+      Risk_Score >= (Q1_risk - 1.5 * IQR_risk) & Risk_Score <= (Q3_risk + 1.5 * IQR_risk) &
+      Debt_To_Income_Ratio >= (Q1_dti - 1.5 * IQR_dti) & Debt_To_Income_Ratio <= (Q3_dti + 1.5 * IQR_dti)
+    )
+  
+  return(data_filtered)
+}
+
+# Remove outliers from both datasets
+dfr_before_2015_clean <- remove_outliers(dfr_before_2015)
+dfr_after_2015_clean <- remove_outliers(dfr_after_2015)
+
+# Reuse the same bin width for the 2D histograms
+bins <- 40 # Set the number of bins, adjust as necessary
+
+# Create a 2D histogram for applications before 2015
+ggplot(dfr_before_2015_clean, aes(x = Risk_Score, y = Debt_To_Income_Ratio)) +
+  geom_bin2d(bins = bins) +
+  labs(title = "2D Histogram of Risk Score vs Debt-To-Income Ratio (Before 2015)",
+       x = "Risk Score",
+       y = "Debt-To-Income Ratio") +
+  theme_minimal()
+
+# Create a 2D histogram for applications after 2015
+ggplot(dfr_after_2015_clean, aes(x = Risk_Score, y = Debt_To_Income_Ratio)) +
+  geom_bin2d(bins = bins) +
+  labs(title = "2D Histogram of Risk Score vs Debt-To-Income Ratio (After 2015)",
+       x = "Risk Score",
+       y = "Debt-To-Income Ratio") +
+  theme_minimal()
+
+# Clean up
+rm(dfr_before_2015)
+rm(dfr_after_2015)
+rm(dfr1)
+rm(dfr_before_2015_clean)
+rm(dfr_after_2015_clean)
+
 ```
 
 
 
 
 
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
 
+# Clone the original dataframe
+dfr1 <- dfr
 
+# Convert Application Date to Date format if not already done
+dfr1$Application_Date <- as.Date(dfr1$'Application Date')
 
+# Convert Risk_Score to numeric, handling NAs
+dfr1$Risk_Score <- as.numeric(dfr1$Risk_Score)
 
+# Convert Debt-To-Income Ratio to numeric by removing "%" and converting to decimal
+dfr1$Debt_To_Income_Ratio <- as.numeric(gsub("%", "", dfr1$`Debt-To-Income Ratio`)) / 100
 
+# Filter for application dates before and after 2015
+dfr_before_2015 <- dfr1 %>% filter(Application_Date < as.Date("2015-01-01"))
+dfr_after_2015 <- dfr1 %>% filter(Application_Date >= as.Date("2015-01-01"))
+
+# Define outlier removal function using IQR
+remove_outliers <- function(data) {
+  # Calculate Q1, Q3, and IQR for Risk_Score
+  Q1_risk <- quantile(data$Risk_Score, 0.25, na.rm = TRUE)
+  Q3_risk <- quantile(data$Risk_Score, 0.75, na.rm = TRUE)
+  IQR_risk <- IQR(data$Risk_Score, na.rm = TRUE)
+  
+  # Calculate Q1, Q3, and IQR for Debt_To_Income_Ratio
+  Q1_dti <- quantile(data$Debt_To_Income_Ratio, 0.25, na.rm = TRUE)
+  Q3_dti <- quantile(data$Debt_To_Income_Ratio, 0.75, na.rm = TRUE)
+  IQR_dti <- IQR(data$Debt_To_Income_Ratio, na.rm = TRUE)
+
+  # Filter data to remove outliers
+  data_filtered <- data %>%
+    filter(
+      Risk_Score >= (Q1_risk - 1.5 * IQR_risk) & Risk_Score <= (Q3_risk + 1.5 * IQR_risk) &
+      Debt_To_Income_Ratio >= (Q1_dti - 1.5 * IQR_dti) & Debt_To_Income_Ratio <= (Q3_dti + 1.5 * IQR_dti)
+    )
+  
+  return(data_filtered)
+}
+
+# Remove outliers from both datasets
+dfr_before_2015_clean <- remove_outliers(dfr_before_2015)
+dfr_after_2015_clean <- remove_outliers(dfr_after_2015)
+
+# Create a contour plot for applications before 2015
+ggplot(dfr_before_2015_clean, aes(x = Risk_Score, y = Debt_To_Income_Ratio)) +
+  geom_density_2d() +
+  labs(title = "Contour Plot of Risk Score vs Debt-To-Income Ratio (Before 2015)",
+       x = "Risk Score",
+       y = "Debt-To-Income Ratio") +
+  theme_minimal()
+
+# Create a contour plot for applications after 2015
+ggplot(dfr_after_2015_clean, aes(x = Risk_Score, y = Debt_To_Income_Ratio)) +
+  geom_density_2d() +
+  labs(title = "Contour Plot of Risk Score vs Debt-To-Income Ratio (After 2015)",
+       x = "Risk Score",
+       y = "Debt-To-Income Ratio") +
+  theme_minimal()
+
+# Clean up
+rm(dfr_before_2015)
+rm(dfr_after_2015)
+rm(dfr1)
+rm(dfr_before_2015_clean)
+rm(dfr_after_2015_clean)
+
+```
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+# Clone the original dataframe
+dfr1 <- dfr
+
+# Convert Application Date to Date format if not already done
+dfr1$Application_Date <- as.Date(dfr1$'Application Date')
+
+# Convert Risk_Score to numeric, handling NAs
+dfr1$Risk_Score <- as.numeric(dfr1$Risk_Score)
+
+# Convert Debt-To-Income Ratio to numeric by removing "%" and converting to decimal
+dfr1$Debt_To_Income_Ratio <- as.numeric(gsub("%", "", dfr1$`Debt-To-Income Ratio`)) / 100
+
+# Filter for application dates before and after 2015
+dfr_before_2015 <- dfr1 %>% filter(Application_Date < as.Date("2015-01-01"))
+dfr_after_2015 <- dfr1 %>% filter(Application_Date >= as.Date("2015-01-01"))
+
+# Define outlier removal function using IQR
+remove_outliers <- function(data) {
+  # Calculate Q1, Q3, and IQR for Risk_Score
+  Q1_risk <- quantile(data$Risk_Score, 0.25, na.rm = TRUE)
+  Q3_risk <- quantile(data$Risk_Score, 0.75, na.rm = TRUE)
+  IQR_risk <- IQR(data$Risk_Score, na.rm = TRUE)
+  
+  # Calculate Q1, Q3, and IQR for Debt_To_Income_Ratio
+  Q1_dti <- quantile(data$Debt_To_Income_Ratio, 0.25, na.rm = TRUE)
+  Q3_dti <- quantile(data$Debt_To_Income_Ratio, 0.75, na.rm = TRUE)
+  IQR_dti <- IQR(data$Debt_To_Income_Ratio, na.rm = TRUE)
+
+  # Filter data to remove outliers
+  data_filtered <- data %>%
+    filter(
+      Risk_Score >= (Q1_risk - 1.5 * IQR_risk) & Risk_Score <= (Q3_risk + 1.5 * IQR_risk) &
+      Debt_To_Income_Ratio >= (Q1_dti - 1.5 * IQR_dti) & Debt_To_Income_Ratio <= (Q3_dti + 1.5 * IQR_dti)
+    )
+  
+  return(data_filtered)
+}
+
+# Remove outliers from both datasets
+dfr_before_2015_clean <- remove_outliers(dfr_before_2015)
+dfr_after_2015_clean <- remove_outliers(dfr_after_2015)
+
+# Combine the datasets for plotting
+dfr_combined <- bind_rows(
+  dfr_before_2015_clean %>% mutate(Period = "Before 2015"),
+  dfr_after_2015_clean %>% mutate(Period = "After 2015")
+)
+
+# Create a combined contour plot
+ggplot(dfr_combined, aes(x = Risk_Score, y = Debt_To_Income_Ratio, color = Period)) +
+  geom_density_2d() +
+  labs(title = "Contour Plot of Risk Score vs Debt-To-Income Ratio",
+       x = "Risk Score",
+       y = "Debt-To-Income Ratio") +
+  scale_color_manual(values = c("Before 2015" = "blue", "After 2015" = "red")) +
+  theme_minimal() +
+  theme(legend.title = element_blank())
+
+# Clean up
+rm(dfr_before_2015)
+rm(dfr_after_2015)
+rm(dfr1)
+rm(dfr_before_2015_clean)
+rm(dfr_after_2015_clean)
+
+```
+```{r}
+# Create a combined contour plot with filled contours
+ggplot(dfr_combined, aes(x = Risk_Score, y = Debt_To_Income_Ratio, fill = Period)) +
+  geom_density_2d_filled() +
+  labs(title = "Contour Plot of Risk Score vs Debt-To-Income Ratio",
+       x = "Risk Score",
+       y = "Debt-To-Income Ratio") +
+  scale_fill_manual(values = c("Before 2015" = "blue", "After 2015" = "red")) +
+  theme_minimal() +
+  theme(legend.title = element_blank()) +
+  scale_color_manual(values = c("Before 2015" = "blue", "After 2015" = "red"))
+
+# Clean up
+rm(dfr_before_2015)
+rm(dfr_after_2015)
+rm(dfr1)
+rm(dfr_before_2015_clean)
+rm(dfr_after_2015_clean)
+
+```
 
 ```{r}
 # Load necessary libraries
