@@ -46,5 +46,17 @@ Since 2006, LendingClub has been a U.S. financial services company that has faci
 
 4. Interest Rate: The percentage of the loan amount that the lender charges the borrower for borrowing money. 
 
+#Question 1 and answers go here:
+
+#Question 2 and answers go here:
+
+#Question 3 and answers go here:
+
+#Question 4 and answers go here:
+
+
+#Conclusion is here. 
+
+
 
 
