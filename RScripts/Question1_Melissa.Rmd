@@ -157,7 +157,8 @@ print(amnt_stats)
 ggplot(df_final, aes(x = loan_status, y=funded_amnt, fill = loan_status)) + 
   geom_boxplot() + 
   geom_boxplot( colour="black", outlier.colour="blue", outlier.shape=8, outlier.size=4) +
-  labs(title="Boxplot of Loan Amounts by Loan Status", x="Loan Status", y = "Loan Amount ($)") 
+  labs(title="Boxplot of Loan Amounts by Loan Status", x="Loan Status", y = "Loan Amount ($)")+ 
+  scale_fill_manual(values = c("navy", "lightblue"))
 
 ```
 
