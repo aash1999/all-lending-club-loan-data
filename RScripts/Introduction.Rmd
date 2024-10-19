@@ -1,6 +1,6 @@
 ---
 title: "Analysis on LendingClub's Loan Data"
-author: "Emma Gantulga, Ayush Meshram, Aakash Singh, and Melissa Yago"
+author: "Uyemaa Gantulga, Ayush Meshram, Aakash Singh, and Melissa Yago"
 date: "10/20/24"
 output:
   html_document:
