@@ -4,7 +4,7 @@ author: "Uyemaa Gantulga, Ayush Meshram, Aakash Singh, and Melissa Yago"
 date: "10/20/24"
 output:
   html_document:
-    code_folding: show
+    code_folding: hide
     number_sections: false
     toc: yes
     toc_depth: 3
@@ -17,7 +17,7 @@ output:
 ```{r setup, include=F}
 # Some of common RMD options (and the defaults) are: 
 # include=T, eval=T, echo=T, results='hide'/'asis'/'markup',..., collapse=F, warning=T, message=T, error=T, cache=T, fig.width=6, fig.height=4, fig.dim=c(6,4) #inches, fig.align='left'/'center','right', 
-knitr::opts_chunk$set(results="markup", warning = F, message = F)
+knitr::opts_chunk$set(results="markup", warning = F, message = F, comment = NA, fig.align= 'center')
 # Can globally set option for number display format.
 options(scientific=T, digits = 3) 
 # options(scipen=9, digits = 3) 
@@ -35,17 +35,21 @@ library(forcats)
 library(readr)
 library(reshape2)
 library(viridis)  
-library(ggcorrplot) 
+library(ggcorrplot)
+library(knitr)
+library(kableExtra)
+library(stats)
 source("./HelperFunctions/fetchSubset.R")
 ```
 
 
 ```{r}
-df <- read.csv("../DataSet/cleaned_accepted_2013_to_2018Q4.csv")
-col_names = c("Debt-To-Income Ratio", "Risk_Score","Application Date")
-dfr <- fetch_subset(df_location = "../DataSet/filtered_rejected_2013_to_2018Q.csv", col_names = col_names, nrows = c(1,-1))
+df <- fread("../DataSet/cleaned_accepted_2013_to_2018Q4.csv")
+col_names = c("Debt-To-Income Ratio", "Risk_Score","Application Date","Employment Length","Amount Requested")
+dfr <- fread("../DataSet/filtered_rejected_2013_to_2018Q.csv", select = col_names)
+#dfr <- fetch_subset(df_location = "../DataSet/filtered_rejected_2013_to_2018Q.csv", col_names = col_names, nrows = c(1,-1))
 set.seed(1)  # For reproducibility
-dfr <- dfr %>% sample_frac(0.25)
+dfr <- dfr %>% sample_frac(0.20)
 
 ```
 
@@ -82,8 +86,39 @@ Since 2006, LendingClub has been a U.S. financial services company that has faci
 
 9. Employment Length: The amount in years the customer has been employed. 
 
+# iii. About the Datasets
 
-# 1. How do the loan features of term, amount, and interest rate individually influence the likelihood of a loan being charged off versus being fully paid? 
+The datasets used in this research are collected from the Lending Club loan data, which is available on Kaggle: [Lending Club Loan Data](https://www.kaggle.com/datasets/wordsforthewise/lending-club). The data contains information about both accepted and rejected loan applications from 2013 to 2018.
+
+## Accepted Dataset:
+Here is how you can write the **About the Datasets** section in your R Markdown file, providing information about the dataset counts, structure, and source:
+
+
+```{r}
+print("Accepted Dataset:")
+str(df)  # Displaying structure of accepted dataset
+```
+
+- **Count**: The dataset contains approximately `nrow(df)` approved loans.
+- **Structure**: The dataset has `ncol(df)` variables capturing various aspects of each loan and borrower profile, such as credit score, loan amount, employment length, and loan status.
+
+## Rejected Dataset:
+The **Rejected Dataset** comprises loan applications that were not approved by Lending Club. This dataset includes important information on why certain applicants were denied, based on factors like their debt-to-income ratio and risk score.
+
+```{r}
+print("Rejected Dataset:")
+str(dfr)  # Displaying structure of rejected dataset
+```
+
+- **Count**: The rejected loan dataset contains around `nrow(dfr)` rejected applications.
+- **Structure**: This dataset includes `ncol(dfr)` variables, focusing on key aspects like the applicant's risk score, debt-to-income ratio, and application date.
+
+These datasets are pivotal for analyzing the factors contributing to the approval or rejection of loan applications, helping us understand credit risk management and lending patterns during the specified time period.
+
+
+# Reasearch Question 1
+
+**How do the loan features of term, amount, and interest rate individually influence the likelihood of a loan being charged off versus being fully paid?**
 
 This question focuses on assessing risk levels and looking into trends of when the company can expect to see a loan charged off (lender has accepted the loan as unlikely to recover) or being paid off. 
 
@@ -343,10 +378,14 @@ if (any(is.na(df_final$dti))) {
 df_final$issue_d <- as.Date(df_final$issue_d, format = "%Y-%m-%d")
 ```
 
-# 2 How do variables such as dti, annual_inc, int_rate, and fico_range impact the likelihood of a loan being fully paid or charged off year over year from 2013 to 2018? What trends can be identified in the data, and how do these variables differ between the two loan statuses over time?
+# Research Question 2
+**How do variables such as dti, annual_inc, int_rate, and fico_range impact the likelihood of a loan being fully paid or charged off year over year from 2013 to 2018? What trends can be identified in the data, and how do these variables differ between the two loan statuses over time?**
+
+In this analysis, we aim to explore how key financial variables such as debt-to-income ratio (DTI), annual income, interest rate, and FICO score range affect the likelihood of a loan being fully paid or charged off between 2013 and 2018. By analyzing these variables over time, we can identify trends and patterns that may influence loan outcomes. Specifically, we seek to understand how these factors differ between loans that were successfully repaid versus those that were charged off, shedding light on risk factors and lending dynamics during this period.
 
 ## 2.1 Analysis of Charged-Off Loan Percentage (2013-2018)
 
+In this section, we analyze the percentage of loans that were charged off (i.e., loans that borrowers were unable to fully repay) between 2013 and 2018. By aggregating loan data on a quarterly basis, we examine the trends in charged-off loans over time to gain insights into changes in lending risk and borrower behavior. Specifically, we explore how the charged-off loan percentage fluctuated over the years and consider potential factors that could explain these changes.
 
 ```{r}
 # LINE PLOT
@@ -423,6 +462,22 @@ The charged-off percentage increases from Q1 2013 (14.9%) to Q2 2015 (18.5%), th
 
 
 ## 2.2 Hypothesis Testing for Key Financial Features
+
+Here’s a brief introduction for **2.2 Hypothesis Testing for Key Financial Features** in your R Markdown file, stating the null and alternative hypotheses:
+
+---
+
+## 2.2 Hypothesis Testing for Key Financial Features
+
+In this section, we conduct hypothesis testing on key financial features to examine their influence on loan outcomes, specifically the likelihood of a loan being charged off. Using Welch’s t-test, we compare loans issued before and after Q2 2015 to identify significant differences in features such as annual income, debt-to-income ratio, interest rate, FICO score, and other variables that may impact loan status.
+
+For each feature, the null hypothesis (H0) and alternative hypothesis (H1) are as follows:
+
+- **Null Hypothesis (H0)**: There is no significant difference in the mean of the feature between loans issued before and after Q2 2015.
+- **Alternative Hypothesis (H1)**: There is a significant difference in the mean of the feature between loans issued before and after Q2 2015.
+
+Based on the p-values obtained from the t-tests, we determine whether to reject the null hypothesis in favor of the alternative hypothesis. The results help us identify which features play a significant role in determining loan outcomes over time.
+
 
 ```{r}
 # T-test
@@ -586,6 +641,12 @@ rm(t_test_results_filtered)
 
 
 ## 2.3 Correlation Plot Analysis
+
+In this section, we analyze the relationships between key financial variables using a correlation matrix. The correlation plot helps identify how different variables, such as income, loan amount, credit score, interest rate, and other features, interact with each other. By understanding these correlations, we can gain insights into how specific factors, like income or credit score, may influence loan characteristics and outcomes.
+
+The correlation matrix is visualized to highlight both positive and negative relationships between variables, offering a comprehensive overview of how these financial features are interconnected and how they might affect borrower behavior or loan performance.
+
+
 ```{r}
 #COOR PLOT
 
@@ -635,6 +696,9 @@ rm(cor_matrix)
   - `total_acc` has a weak positive correlation with `loan_amnt` (0.1966), indicating that borrowers with more accounts tend to have slightly higher loan amounts.
 
 ## 2.4 Analysis of Charged-Off Loans by State
+
+In this section, we examine the geographical distribution of charged-off loans across U.S. states, focusing on changes in loan performance before and after Q2 2015. By analyzing the percentage of charged-off loans by state, we aim to identify regional trends and assess the impact of interventions implemented during this period. Using geographic visualization, we compare the frequency of charged-off loans across different states to uncover potential regional disparities in loan outcomes, and evaluate the success of interventions in improving loan performance in specific areas.
+
 
 ```{r}
 # US MAP
@@ -791,6 +855,8 @@ The analysis highlights states like Nebraska and Iowa as significant cases with 
 
 ## 2.5 Comparison of Debt-to-Income Ratios: Charged-Off vs. Fully Paid Loans (2013-2018)
 
+This section focuses on the debt-to-income (DTI) ratio and its relationship with loan outcomes, specifically comparing charged-off and fully paid loans between 2013 and 2018. The DTI ratio, a key metric used to assess borrowers' ability to manage loan repayments, is analyzed to identify its role as a potential risk factor for loan defaults. By visualizing DTI distributions across different quarters using box plots, we highlight differences between charged-off and fully paid loans and explore trends over time, providing insights into how DTI may influence loan performance.
+
 ```{r}
 
 # BOX PLOT
@@ -855,6 +921,10 @@ The analysis indicates that higher DTI ratios are associated with charged-off lo
 
 
 ## 2.6 Radar Chart Analysis of Loan Characteristics (2014 vs. 2018)
+
+In this section, we use radar charts to compare key loan characteristics between loans issued in 2014 and 2018. By standardizing variables such as interest rates, annual income, FICO score range, and debt-to-income (DTI) ratio, we visualize changes in borrower profiles and loan terms over time. This analysis highlights shifts in loan affordability, borrower financial health, and creditworthiness, offering insights into how lending practices evolved during this period.
+
+
 ```{r}
 # RADAR CHART
 
@@ -965,6 +1035,9 @@ rm(radar_data_2014_2017)
 
 ## 2.7 Contour Plot Comparing Risk Score vs. Debt-to-Income Ratio Before and After 2015
 
+This section examines the relationship between risk scores and debt-to-income (DTI) ratios for rejected loan applications, utilizing contour plots to visualize the distributions before and after 2015. By analyzing these trends, we aim to identify shifts in lending criteria and applicant profiles over time. The findings will provide insights into how lenders may have adjusted their risk assessment practices, reflecting broader economic changes and evolving borrower risk profiles.
+
+
 ```{r}
 # Contour PLOT
 
@@ -1054,6 +1127,10 @@ rm(dfr_after_2015_clean)
 
 
 ## 2.8 Histogram Analysis of Debt-to-Income Ratios (DTI) for Rejected Loans
+
+In this section, we conduct a histogram analysis of debt-to-income (DTI) ratios for rejected loans, focusing on data from before and after 2015. By visualizing the frequency distribution of DTI ratios, we aim to uncover trends in lending practices and the criteria used for loan rejection over time.
+
+The histogram will reveal how the distribution of DTI values has shifted, highlighting any significant changes in rejection patterns associated with varying DTI levels. This analysis will provide insights into the evolving risk assessment strategies employed by lenders, particularly in response to economic conditions and regulatory changes post-2015.
 
 ```{r}
 # HISTOGRAM 
@@ -1151,6 +1228,9 @@ df_final <- df %>%
 ## 3.1 Loan Repayment By Grade
 ### 3.1.1 BAR PLOT
 
+In this section, we analyze the loan repayment rates categorized by loan grades using a bar plot. By transforming loan status into a binary variable—where "Fully Paid" is coded as 1 and "Charged Off" as 0—we can effectively calculate the repayment rate for each grade.
+
+The bar plot will visually represent the correlation between loan grades and repayment rates, revealing trends that indicate how loan quality influences repayment behavior. This analysis is crucial for understanding the risk associated with different loan grades, highlighting significant disparities in repayment performance. The findings will underscore the importance of grading in assessing loan performance and guiding lending strategies.
 
 ```{r loan_repayment_rate_by_grade, fig.width=10, fig.height=6}
 
@@ -1200,6 +1280,8 @@ rm(repayment_rate)
 
 ## 3.2 Income Distribution By Loan Grade
 ### 3.2.1 BOX PLOT
+
+In this section, we analyze the distribution of annual income across different loan grades using a box plot. The box plot provides a visual representation of the income variability within each grade while also highlighting the median income. To ensure accuracy, we employ an outlier removal technique based on the interquartile range (IQR), which helps to focus the analysis on the central tendency of the income distribution. Our findings reveal a clear correlation between loan grade and income, with higher grades consistently associated with greater median incomes. Additionally, we observe that the income disparity narrows among lower grades, indicating that other factors may play a significant role in determining loan grades. This analysis not only emphasizes the importance of income in the lending process but also suggests that additional criteria may influence loan classification, particularly in the lower-grade categories.
 
 ```{r income-distribution-boxplot}
 
@@ -1273,8 +1355,6 @@ rm(plot_data)
 
 
 
-## 3.3 Data Preparation for Heatmap Analysis
-
 ```{r prepare-data}
 # Create income brackets
 # Create income brackets
@@ -1300,9 +1380,12 @@ rm(heatmap_data)
 ```
 
 
+## 3.3 Repayment Rate by Grade and Income Bracket 
+In this section, we focus on preparing the data for a heatmap analysis that explores the relationship between income brackets and loan repayment rates across different loan grades. To facilitate this analysis, we first categorize annual income into distinct brackets using quantiles, which helps in understanding how income levels relate to repayment behavior. The income brackets include "Very Low," "Low," "Medium," "High," and "Very High," and are structured to reflect varying financial capacities of borrowers. 
 
-## 3.4 Repayment Rate by Grade and Income Bracket 
-### 3.4.1 HEATMAP
+Next, we calculate the repayment rates for each combination of loan grade and income bracket, providing insights into how repayment likelihood varies based on these factors. This transformation of the data into a wide format allows for an effective visualization of repayment rates in a heatmap, highlighting trends and patterns across different income segments and loan grades. The findings from this analysis can inform lending strategies and risk assessment, showcasing the intricate interplay between borrower income and loan performance.
+
+### 3.3.1 HEATMAP
 
 
 ```{r repayment-heatmap, fig.width=12, fig.height=8}
@@ -1339,7 +1422,9 @@ rm(repayment_rates)
 
 
 
-## 3.5 ANOVA Test
+## 3.4 ANOVA Test
+
+This section presents the results of an ANOVA test aimed at assessing whether there are significant differences in annual income across various loan grades. The test revealed an F-statistic of 1260.67 and a p-value of 0.0000, indicating highly statistically significant differences in income levels across the grades. These findings confirm the strong relationship between income and loan grades, supporting earlier visual observations that higher grades are associated with higher incomes. Overall, the results suggest that income is a key factor in determining loan grades.
 
 ```{r anova_test_income_across_grades}
 
@@ -1370,9 +1455,9 @@ F-statistic = 1260.67, p-value = 0.0000
 --Confirmation of visual trends: These results statistically confirm the visual trends observed in previous charts, where higher loan grades were associated with higher incomes. The ANOVA provides robust evidence that these income differences across grades are not due to chance.
 
 
-## 3.6 Chi Square Test Grade Vs Loan Status
+## 3.5 Chi Square Test Grade Vs Loan Status
 
-
+In this section, we conduct a Chi-Square test to evaluate the relationship between loan grades and loan status outcomes. The results indicate a highly significant association between these two variables, with a p-value of 0.0000. Specifically, the analysis reveals that Grade A loans have a higher-than-expected number of "Fully Paid" outcomes, while lower grades (E, F, and G) exhibit a concerning trend with increased "Charged Off" and "Late" payments. These findings suggest that loan grade is a strong predictor of loan performance, reinforcing the notion that higher grades correspond to lower risk in loan repayments.
 
 ```{r chi_square_test}
 # Create a contingency table
@@ -1410,7 +1495,7 @@ rm(chi_square_result)
 
 
 
-### 3.6.1 Interpretation Of chi Square Test 
+### 3.5.1 Interpretation Of chi Square Test 
 
 ```{r interpretation}
 # Interpretation
@@ -1443,9 +1528,10 @@ if (cramer_v < 0.1) {
 
 
 
-## 3.7 Loan Status Distribution By Grade 
-### 3.7.1 STACKED BAR CHART
+## 3.6 Loan Status Distribution By Grade 
+### 3.6.1 STACKED BAR CHART
 
+This section presents a stacked bar chart illustrating the distribution of loan statuses by grade. The visualization highlights a clear inverse relationship between loan grade and charge-off rates, with Grade A loans exhibiting the lowest charge-off proportions and Grade G loans the highest. Additionally, higher grades (A and B) show a significantly greater proportion of fully paid loans, emphasizing their lower risk profile. Conversely, as loan grades decrease, the proportion of loans in "Current" status increases, suggesting potential borrower behavior trends and the impact of loan terms on repayment patterns.
 
 ```{R Loan Status Distribution by Grade}
 #3. Loan Status Distribution by Grade
@@ -1457,6 +1543,7 @@ df_final %>%
        fill = "Loan Status") +
   theme_minimal() +
   scale_y_continuous(labels = scales::percent_format())
+rm(df_final)
 
 ```
 
@@ -1468,7 +1555,406 @@ df_final %>%
 --Current loans increase in lower grades: The proportion of loans in "Current" status increases noticeably from Grade C to G. This could suggest that lower-grade loans have longer terms or that borrowers of lower-grade loans are more likely to make minimum payments rather than paying off the loan early.
 
 
-#Question 4 and answers go here: (EMMA please paste your code here and complete the report. please let me know if you need any help from me)
+
+
+# Research Question 4
+**Is there a relationship between employment length and the amount requested for rejected loans and how does it compare to the customers that had accepted loan.**
+
+This analysis explores the relationship between employment length and the amount requested for both rejected and accepted loans. By comparing these two groups, we aim to understand how employment stability may influence loan-seeking behavior and the associated loan amounts. This comparison will help identify potential trends and differences that could inform lending practices and risk assessments for various employment profiles.
+
+
+## 4.1 Data Cleaning
+
+In this section, we focus on cleaning the data for both accepted and rejected loans to ensure accurate analysis. Specifically, we will standardize the "Employment Length" and "Amount Requested" fields. For the employment length, we convert various formats into a consistent numeric representation, replacing values like "< 1 year" with 0.5 and "10+ years" with 10. We will also remove any unnecessary text for clarity. Additionally, we will clean the loan amount fields to confirm they are numeric, stripping away any non-numeric characters. This cleaning process is essential to facilitate meaningful comparisons between the two loan groups and to analyze their relationship with the requested amounts effectively.
+
+```{r}
+accepted_loans <- df
+rejected_loans <- dfr
+rm(df)
+rm(dfr)
+unique(rejected_loans$"Employment Length")
+unique(accepted_loans$emp_length)
+
+# copy of the "Employment Length" column for rejected loans and emp_length for accepted loans
+rejected_loans$emp_length_cleaned <- rejected_loans$"Employment Length"
+accepted_loans$emp_length_cleaned <- accepted_loans$emp_length
+
+# Replace "< 1 year" with 0.5, "10+ years" with 10, and remove "years"
+rejected_loans$emp_length_cleaned <- gsub("< 1", "0.5", rejected_loans$emp_length_cleaned)
+rejected_loans$emp_length_cleaned <- gsub("10\\+ years", "10", rejected_loans$emp_length_cleaned)
+rejected_loans$emp_length_cleaned <- gsub(" years", "", rejected_loans$emp_length_cleaned)
+
+accepted_loans$emp_length_cleaned <- gsub("< 1", "0.5", accepted_loans$emp_length_cleaned)
+accepted_loans$emp_length_cleaned <- gsub("10\\+ years", "10", accepted_loans$emp_length_cleaned)
+accepted_loans$emp_length_cleaned <- gsub(" years", "", accepted_loans$emp_length_cleaned)
+
+# Convert to numeric
+rejected_loans$emp_length_cleaned <- as.numeric(rejected_loans$emp_length_cleaned)
+accepted_loans$emp_length_cleaned <- as.numeric(accepted_loans$emp_length_cleaned)
+
+# Cleaning loan amount in accepted loans
+accepted_loans$loan_amnt_cleaned <- accepted_loans$loan_amnt
+
+# Ensure it is numeric (remove any non-numeric characters just in case)
+accepted_loans$loan_amnt_cleaned <- as.numeric(gsub("[^0-9.]", "", accepted_loans$loan_amnt_cleaned))
+
+# Check if any NA values were introduced during the conversion
+sum(is.na(accepted_loans$loan_amnt_cleaned))
+summary(accepted_loans$loan_amnt_cleaned)
+
+# Cleaning amount.requested in rejected loans
+rejected_loans$amount_requested_cleaned <- rejected_loans$"Amount Requested"
+
+# Ensure it is numeric (remove any non-numeric characters)
+rejected_loans$amount_requested_cleaned <- as.numeric(gsub("[^0-9.]", "", rejected_loans$amount_requested_cleaned))
+
+
+
+```
+
+## 4.2 Analysis of Employment length and loan amount
+
+### 4.2.1 Accepted loan
+
+This section presents a boxplot analysis comparing employment length with loan amounts for accepted loans.
+
+```{r}
+
+# Boxplot for accepted loans: Employment Length vs Loan Amount
+ggplot(accepted_loans, aes(x = as.factor(emp_length_cleaned), y = loan_amnt_cleaned)) +
+  geom_boxplot(fill = "lightgreen", color = "blue") +
+  ggtitle("Accepted Loans: Employment Length vs Loan Amount") +
+  xlab("Employment Length (years)") +
+  ylab("Loan Amount") +
+  theme_minimal()
+```
+
+The median loan amount is between 10.000 USD to 20.000 USD for the accepted loan dataset. Their loan had been accepted at this rate without much change in amount throughout the different employment length category.
+
+### 4.2.2 Rejected Loans
+
+In this section, we focus on the rejected loan dataset, which contains approximately 117,000 observations out of a total of 22 million. This accounts for less than 0.5% of the data pertaining to loan requests, with amounts reaching up to 1 million USD. To ensure a more accurate analysis, we have removed outliers that exhibited excessive deviation from the overall dataset. This cleaning process will help us better understand the relationship between employment length and the amount requested for rejected loans.
+
+
+```{r}
+
+
+##Working on the rejected loan set, cleaning the outliers.
+# Calculate Q1, Q3, and IQR for amount requested
+Q1 <- quantile(rejected_loans$amount_requested_cleaned, 0.25, na.rm = TRUE)
+Q3 <- quantile(rejected_loans$amount_requested_cleaned, 0.75, na.rm = TRUE)
+IQR <- Q3 - Q1
+
+# Define lower and upper bound
+lower_bound <- Q1 - 1.5 * IQR
+upper_bound <- Q3 + 1.5 * IQR
+# Filter out outliers
+rejected_loans_filtered <- rejected_loans %>%
+  filter(amount_requested_cleaned >= lower_bound & amount_requested_cleaned <= upper_bound)
+
+
+```
+
+
+Rejected dataset has 117000 observations out of 22 million observation data which is less than 0.5% of the data in loan requested amount ranging into 1 million USD loan request. We've removed the outliers that has extensive reach and deviation from the dataset. 
+
+## 4.3 Boxplot for Outlier-Exempted Data in Analyzing Employment Length and Amount Requested for the Rejected Loans Dataset
+
+This section presents a boxplot analysis of the rejected loans dataset, focusing on the relationship between employment length and the amount requested after removing outliers.
+
+```{r}
+# Boxplot without outliers
+ggplot(rejected_loans_filtered, aes(x = as.factor(emp_length_cleaned), y = amount_requested_cleaned)) +
+  geom_boxplot(fill = "lightcoral", color = "black") +
+  ggtitle("Rejected Loans: Employment Length vs Amount Requested (Outliers Removed)") +
+  xlab("Employment Length (years)") +
+  ylab("Amount Requested") +
+  theme_minimal()
+
+```
+
+The rejected dataset processing shows that amount requested had good amount of variation for the each employment category. Loan amounts ranged from less than 5000 USD to around 25.000USD. In order to understand the frequency of the loan amount requested we can create density plot for both accepted and rejected loan dataset. That way we can determined at what frequency how much had been requested or granted to the applicants. 
+
+
+## 4.4 Density Plot for the Distribution of Requested Amount in the Rejected Loan Dataset
+
+This section explores the distribution of requested amounts in the rejected loans dataset through a density plot. Out of approximately 22 million observations, around 4 million applicants requested $10,000, making it the most common loan amount sought. This is followed by requests for $5,000, $1,000, $20,000, and $15,000. 
+
+We also compare this with the distribution of loan amounts granted in the accepted loans dataset. The density plot for accepted loans indicates that the $10,000 loan package was the most frequently granted amount, followed by $20,000 and $15,000. This analysis helps illustrate the contrast in requested and granted loan amounts across both datasets.
+
+
+```{r}
+ggplot(rejected_loans_filtered, aes(x = amount_requested_cleaned)) +
+  geom_histogram(binwidth = 1000, fill = "lightcoral", color = "black") +
+  ggtitle("Distribution of Amount Requested (Rejected Loans)") +
+  xlab("Amount Requested") +
+  ylab("Frequency")
+rm(rejected_loans_filtered)
+
+```
+
+In the rejected loan ,out of 22 mln observations about 4 mln applicants requested 10000 USD this is the most requested amount, 2nd most requested amount is 5000 USD followed by 1000 USD, 20000USD and 15000USD. 
+
+```{r}
+# Plot the distribution of loan amounts for accepted loans
+ggplot(accepted_loans, aes(x = loan_amnt_cleaned)) +
+  geom_histogram(binwidth = 1000, fill = "lightgreen", color = "black") +
+  ggtitle("Distribution of Loan Amount (Accepted Loans)") +
+  xlab("Loan Amount") +
+  ylab("Frequency") +
+  theme_minimal()
+
+```
+
+In the accapted loan, we can see 10000USD loan package was the most granted, followed by 20000USD and 15000USD. 
+
+## 4.5 Employment Length Pie Chart (Rejected Loans)
+
+This section presents a pie chart visualizing the distribution of employment lengths among applicants whose loan requests were rejected. The analysis focuses on applicants with employment lengths between 1 and 10 years. The chart reveals that 69% of rejected loans were associated with applicants who had 5 years of employment. Additionally, 11.5% of the rejected applications came from individuals with 10 or more years of employment. This visualization highlights the relationship between employment length and loan rejection rates, providing insights into the employment profiles of applicants in the rejected loans dataset.
+
+
+```{r}
+# Filter employment lengths between 1 and 10 years
+emp_length_filtered <- rejected_loans %>%
+  filter(emp_length_cleaned >= 1 & emp_length_cleaned <= 10)
+
+# Calculate the percentage of each employment length (1 to 10 years)
+emp_length_counts <- table(emp_length_filtered$emp_length_cleaned)
+emp_length_percentage <- prop.table(emp_length_counts) * 100
+rm(emp_length_filtered)
+rm(emp_length_counts)
+# Convert to a data frame for easy plotting
+emp_length_df <- as.data.frame(emp_length_percentage)
+rm(emp_length_percentage)
+colnames(emp_length_df) <- c("Employment_Length", "Percentage")
+
+
+
+# Plot the data using a pie chart
+ggplot(emp_length_df, aes(x = "", y = Percentage, fill = factor(Employment_Length))) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  geom_text(aes(label = paste0(round(Percentage, 1), "%")), position = position_stack(vjust = 0.5)) +
+  ggtitle("Rejected Loans % by Employment Length") +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set3") +  # Colorful palette for the pie chart
+  labs(fill = "Years")
+
+```
+
+Employment length pie chart is designed to showcase and visualize the dataset. From our graphic we can see that 69% of the rejected loan were at 5 year employment length. And 11.5% of the dataset is showing employment length of 10 years and more as the second highest category to request loan and get rejected by the employment category. 
+
+## 4.6 Employment Length Pie Chart (Accepted Loans)
+
+This section presents a pie chart visualizing the distribution of employment lengths among applicants whose loan requests were accepted. The analysis focuses on applicants with employment lengths between 1 and 10 years. Notably, 42.6% of accepted loan applications came from individuals with 10 or more years of employment, indicating a significant correlation between longer employment duration and loan acceptance. In contrast, this category represented just over 11% of the rejected applications. This suggests that loan companies may be more inclined to approve requests from applicants with extensive employment histories, reflecting a potential preference for stability and reliability in the applicant's profile.
+
+
+```{r}
+# Filter employment lengths between 1 and 10 years for accepted loans
+emp_length_filtered_accepted <- accepted_loans %>%
+  filter(emp_length_cleaned >= 1 & emp_length_cleaned <= 10)
+
+# Calculate the percentage of each employment length (1 to 10 years)
+emp_length_counts_accepted <- table(emp_length_filtered_accepted$emp_length_cleaned)
+rm(emp_length_filtered_accepted)
+emp_length_percentage_accepted <- prop.table(emp_length_counts_accepted) * 100
+rm(emp_length_counts_accepted)
+# Convert to a data frame for easy plotting
+emp_length_df_accepted <- as.data.frame(emp_length_percentage_accepted)
+colnames(emp_length_df_accepted) <- c("Employment_Length", "Percentage")
+rm(emp_length_percentage_accepted)
+
+# Plot the data using a pie chart
+ggplot(emp_length_df_accepted, aes(x = "", y = Percentage, fill = factor(Employment_Length))) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  geom_text(aes(label = paste0(round(Percentage, 1), "%")), position = position_stack(vjust = 0.5)) +
+  ggtitle("Accepted Loans % by Employment Length") +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set3") +  # Use a colorful palette for better visual appeal
+  labs(fill = "Years")
+rm(emp_length_counts_accepted)
+rm(emp_length_df_accepted)
+```
+
+Whereas, the accepted loan amount for the category 10 years or more of employment length had covered 42.6% of the accepted loan application.  It could be interpreted in many ways. However, now we know that 10 yrs employment category group had applied about the same amount of loan, covered only bit more than 11% of applicant in the rejected category. It can be hypothesized that the loan company had tendency to grant more of their loan requests.
+
+
+
+
+```{r}
+# Function to clean numeric columns
+clean_numeric <- function(data, cols, percent_cols = NULL) {
+  # Convert specified columns to numeric
+  for (col in cols) {
+    data[[col]] <- as.numeric(data[[col]])
+  }
+  
+  # If there are percentage columns, clean and convert them as well
+  if (!is.null(percent_cols)) {
+    for (col in percent_cols) {
+      data[[col]] <- as.numeric(gsub("%", "", data[[col]])) / 100
+    }
+  }
+  
+  return(data)
+}
+
+# Columns to clean for accepted loans
+accepted_columns <- c("emp_length_cleaned", "dti", "loan_amnt")
+# Columns to clean for rejected loans (including percentage)
+rejected_columns <- c("emp_length_cleaned", "Amount Requested")
+percent_columns <- c("Debt-To-Income Ratio")
+
+# Clean the datasets
+accepted_loans <- clean_numeric(accepted_loans, accepted_columns)
+rejected_loans <- clean_numeric(rejected_loans, rejected_columns, percent_columns)
+
+```
+
+## 4.7 Accepted loan analysis: Employment VS loan grade   VS Annual income VS DTI
+We have asked ourselves how the employment length is influencing the applicant's change of being granted the loan and we've analyzed how much percentage of the loan was granted to each employment length group ranging from less than 1 year and 10 or more years. We can now run statistical tests to see how confident or relevant this could be in such big amount of dataset. 
+
+
+
+```{r}
+# 1. ANOVA: Employment Length vs Loan Grade
+anova_grade <- aov(emp_length_cleaned ~ grade, data = accepted_loans)
+anova_summary <- summary(anova_grade)
+
+# 2. Pearson Correlation: Employment Length vs Annual Income
+cor_emp_income <- cor.test(accepted_loans$emp_length_cleaned, accepted_loans$annual_inc, use = "complete.obs")
+
+# 3. Pearson Correlation: Employment Length vs DTI
+cor_emp_dti <- cor.test(accepted_loans$emp_length_cleaned, accepted_loans$dti, use = "complete.obs")
+
+# Create a summary table for results
+test_results <- data.frame(
+  Test = c("ANOVA: Employment Length vs Loan Grade", 
+           "Correlation: Employment Length vs Annual Income", 
+           "Correlation: Employment Length vs DTI"),
+  
+  Statistic = c(anova_summary[[1]][["F value"]][1], 
+                cor_emp_income$estimate, 
+                cor_emp_dti$estimate),
+  
+  P_Value = c(anova_summary[[1]][["Pr(>F)"]][1], 
+              cor_emp_income$p.value, 
+              cor_emp_dti$p.value)
+)
+
+# Print the summary table
+print(test_results)
+
+```
+
+
+The results of your **ANOVA test** for the relationship between **employment length** and **loan grade** are as follows:
+- **F-statistic**: 61.35
+- **P-value**: 2.01e-76 
+
+**Explanation:**
+
+1. **ANOVA Test Purpose**:
+   - An **ANOVA test (Analysis of Variance)** compares the means of **employment length** across the different **loan grades** (a categorical variable). It checks if there are statistically significant differences in **employment length** between the groups (loan grades).
+
+2. **F-statistic (61.35)**:
+   - The **F-statistic** is a ratio that compares the variation **between the group means** (loan grades) to the variation **within each group**. A higher F-statistic indicates that the group means are more different from each other relative to the variation within the groups.
+   - **F = 61.35** is a relatively large value, suggesting that there are substantial differences in the **employment length** between different **loan grades**.
+
+3. **P-value (2.01e-76)**:
+   - The **p-value** tells us whether the differences in means between the loan grades are statistically significant. A **p-value** less than 0.05 is typically considered statistically significant.
+   - In this case, the **p-value is 2.01e-76**, which is **extremely small**, meaning that the probability of observing such a large F-statistic by random chance is practically zero.
+   - This strongly suggests that there is a **statistically significant difference** in **employment length** across the different **loan grades**.
+   
+   
+**Conclusion:**
+
+- **Significant Relationship**: The **ANOVA test** shows that **employment length** varies significantly across different **loan grades**. Borrowers with different loan grades tend to have different employment lengths.
+- **Practical Interpretation**: Higher loan grades might be associated with longer employment lengths, while lower loan grades might correspond to shorter employment histories (though this would need to be confirmed by looking at the specific group means).
+
+
+## 4.8 Rejected loan analysis: Employment length and Amount requested VS DTI risk score
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+# Data Preparation: Ensure all variables are numeric
+rejected_loans$emp_length_cleaned <- as.numeric(rejected_loans$emp_length_cleaned)
+rejected_loans$amount_requested_cleaned <- as.numeric(rejected_loans$"Amount Requested")
+rejected_loans$Debt.To.Income.Ratio_numeric <- as.numeric(gsub("%", "", rejected_loans$"Debt-To-Income Ratio")) / 100
+rejected_loans$Risk_Score <- as.numeric(rejected_loans$Risk_Score)
+
+# Remove rows with missing values
+rejected_loans_cleaned <- rejected_loans %>%
+  filter(!is.na(emp_length_cleaned) & 
+         !is.na(amount_requested_cleaned) & 
+         !is.na(Debt.To.Income.Ratio_numeric) &
+         !is.na(Risk_Score))
+
+# 1. Pearson Correlation: Employment Length vs Amount Requested
+cor_emp_amount <- cor.test(rejected_loans_cleaned$emp_length_cleaned, rejected_loans_cleaned$amount_requested_cleaned, use = "complete.obs")
+
+# 2. Pearson Correlation: Employment Length vs DTI
+cor_emp_dti <- cor.test(rejected_loans_cleaned$emp_length_cleaned, rejected_loans_cleaned$Debt.To.Income.Ratio_numeric, use = "complete.obs")
+
+# 3. Linear Regression: Employment Length vs Risk Score
+reg_emp_risk <- lm(Risk_Score ~ emp_length_cleaned, data = rejected_loans_cleaned)
+summary_reg_emp_risk <- summary(reg_emp_risk)
+
+# Prepare the results for a table output
+test_results <- data.frame(
+  Test = c("Correlation: Employment Length vs Amount Requested",
+           "Correlation: Employment Length vs DTI",
+           "Linear Regression: Employment Length vs Risk Score"),
+  
+  Statistic = c(round(cor_emp_amount$estimate, 2), 
+                round(cor_emp_dti$estimate, 2),
+                round(summary_reg_emp_risk$coefficients[2, "t value"], 2)),
+  
+  P_Value = c(round(cor_emp_amount$p.value, 2), 
+              round(cor_emp_dti$p.value, 2),
+              round(summary_reg_emp_risk$coefficients[2, "Pr(>|t|)"], 2))
+)
+
+# Print the results
+print(test_results)
+
+```
+
+Based on the statistical results for the **rejected loan dataset**, we can say following: 
+
+**Correlation: Employment Length vs Amount Requested**
+- **Correlation Coefficient**: **0.12**
+- **P-Value**: **0.00**
+
+Explanation:
+- The **correlation coefficient** of **0.12** suggests a **weak positive correlation** between **employment length** and the **amount requested**. This means that there is a slight tendency for people with longer employment histories to request higher loan amounts, but the relationship is not strong.
+- The **p-value** of **0.00** indicates that this result is statistically significant. Since the p-value is less than 0.05, it means that the observed correlation is unlikely to have occurred by chance. Therefore, even though the correlation is weak, it is a meaningful relationship.
+
+**Correlation: Employment Length vs DTI **
+- **Correlation Coefficient**: **0.00**
+- **P-Value**: **0.39**
+
+Explanation:
+- The **correlation coefficient** of **0.00** suggests that there is **no linear relationship** between **employment length** and **debt-to-income ratio (DTI)**. In other words, the length of employment does not seem to have any meaningful impact on the debt-to-income ratio in the rejected loan dataset.
+- The **p-value** of **0.39** is much higher than 0.05, meaning the result is **not statistically significant**. This indicates that any observed relationship between these variables is likely due to chance, and there is no meaningful connection between employment length and DTI in this dataset.
+
+**Linear Regression: Employment Length vs Risk Score**
+- **T-statistic**: **74.87**
+- **P-Value**: **0.00**
+
+Explanation:
+- The **t-statistic** of **74.87** is quite large, which suggests that **employment length** has a strong effect on **Risk Score** in the regression model.
+- The **p-value** of **0.00** indicates that this relationship is statistically significant. Since the p-value is less than 0.05, we can confidently say that there is a meaningful relationship between employment length and risk score.
+- However, note that while the relationship is statistically significant, this does not automatically imply a strong relationship. The actual strength of the relationship can be further interpreted by examining the regression coefficients (we had not done that analysis)
+
+
+# 4.9 Summary of findings in Question 4: 
+
+In both the accepted and rejected loan datasets, **employment length** shows a statistically significant relationship with loan outcomes, though the strength varies. In the accepted dataset, **employment length** significantly differs across **loan grades**, indicating that longer employment histories may be associated with higher loan grades. In the rejected dataset, while **employment length** has a weak but significant positive correlation with the **amount requested** and a strong impact on **risk score**, it shows no meaningful relationship with **debt-to-income ratio**. Since we've have worked with big dataset, we can say that having longer years of employment history you will have higher change of getting accepted the loan. Most of the applicants with long work history had good risk score and had higher loan grades making them preferred candidates from Lending agency's perspective. 
 
 
 
@@ -1479,7 +1965,15 @@ The analysis highlights significant shifts in lending practices and loan applica
 Loan grades strongly correlate with repayment behavior, with higher grades consistently showing better repayment rates. Income levels play a secondary role. The grading system appears to be effective in predicting loan outcomes.
 In the accepted dataset, employment length significantly varies by loan grade, suggesting longer employment is linked to higher grades. In the rejected dataset, employment length has a weak but significant correlation with amount requested and a strong, significant impact on risk score, but shows no significant relationship with debt-to-income ratio.
 
+# 6 References
 
+1. Words For The Wise. (n.d.). *Lending Club dataset*. Kaggle. https://www.kaggle.com/datasets/wordsforthewise/lending-club
+
+2. Lending Club. (n.d.). *Founder savings*. Retrieved October 21, 2024, from https://www.lendingclub.com/personal-savings/founder-savings
+
+3. Dosei, I. (n.d.). *Lending Club Loan Data: Data Dictionary*. GitHub. https://github.com/dosei1/Lending-Club-Loan-Data/blob/master/LCDataDictionary.csv
+
+4. Nayak, A. (2020, July 14). *Bank loan case study*. Medium. https://medium.com/@avi22nayak/bank-loan-case-study-d07524590992
 
 
 
