@@ -1,0 +1,421 @@
+
+### Setting up
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE, include = TRUE)
+library(knitr)
+library(dplyr)
+library(ggplot2)
+library(kableExtra)
+library(stats)
+
+```
+
+### Load data - See what is in the dataset
+
+```{r}
+accepted_loans <- read.csv("C:\\Users\\uemaa\\Documents\\Data Science\\Project 1\\cleaned_accepted_2013_to_2018Q4.csv")
+rejected_loans <- read.csv("C:\\Users\\uemaa\\Documents\\Data Science\\Project 1\\cleaned_rejected_2013_to_2018Q4.csv")
+```
+
+#Data cleaning see what are in the 
+```{r}
+unique(rejected_loans$emp_length)
+unique(accepted_loans$employement.length)
+
+```
+
+#Data cleaning, bringing the numbers to numeric value in employment length data
+
+
+```{r}
+# copy of the Employment.Length column for rejected loans and emp_length for accepted loans
+rejected_loans$emp_length_cleaned <- rejected_loans$Employment.Length
+accepted_loans$emp_length_cleaned <- accepted_loans$emp_length
+
+# Replace "< 1 year" with 0.5, "10+ years" with 10, and remove "years"
+rejected_loans$emp_length_cleaned <- gsub("< 1", "0.5", rejected_loans$emp_length_cleaned)
+rejected_loans$emp_length_cleaned <- gsub("10\\+ years", "10", rejected_loans$emp_length_cleaned)
+rejected_loans$emp_length_cleaned <- gsub(" years", "", rejected_loans$emp_length_cleaned)
+
+accepted_loans$emp_length_cleaned <- gsub("< 1", "0.5", accepted_loans$emp_length_cleaned)
+accepted_loans$emp_length_cleaned <- gsub("10\\+ years", "10", accepted_loans$emp_length_cleaned)
+accepted_loans$emp_length_cleaned <- gsub(" years", "", accepted_loans$emp_length_cleaned)
+
+# Convert to numeric
+rejected_loans$emp_length_cleaned <- as.numeric(rejected_loans$emp_length_cleaned)
+accepted_loans$emp_length_cleaned <- as.numeric(accepted_loans$emp_length_cleaned)
+
+# Result check
+summary(rejected_loans$emp_length_cleaned)
+summary(accepted_loans$emp_length_cleaned)
+
+
+```
+
+# Data cleaning, understanding the amount requested column value
+
+```{r}
+# Cleaning loan amount in accepted loans
+accepted_loans$loan_amnt_cleaned <- accepted_loans$loan_amnt
+
+# Ensure it is numeric (remove any non-numeric characters just in case)
+accepted_loans$loan_amnt_cleaned <- as.numeric(gsub("[^0-9.]", "", accepted_loans$loan_amnt_cleaned))
+
+# Check if any NA values were introduced during the conversion
+sum(is.na(accepted_loans$loan_amnt_cleaned))
+summary(accepted_loans$loan_amnt_cleaned)
+
+```
+
+
+```{r}
+
+# Cleaning amount.requested in rejected loans
+rejected_loans$amount_requested_cleaned <- rejected_loans$Amount.Requested
+
+# Ensure it is numeric (remove any non-numeric characters)
+rejected_loans$amount_requested_cleaned <- as.numeric(gsub("[^0-9.]", "", rejected_loans$amount_requested_cleaned))
+
+# Check if any NA values were introduced during the conversion
+sum(is.na(rejected_loans$amount_requested_cleaned))
+summary(rejected_loans$amount_requested_cleaned)
+
+```
+
+
+# Question 4: Is there a relationship between employment length and the amount requested for rejected loans and how does it compare to the customers that had accepted loan.
+
+## 4.1. Analysis of Employment length and loan amount
+## Accepted loan
+
+```{r}
+
+# Boxplot for accepted loans: Employment Length vs Loan Amount
+ggplot(accepted_loans, aes(x = as.factor(emp_length_cleaned), y = loan_amnt_cleaned)) +
+  geom_boxplot(fill = "lightgreen", color = "blue") +
+  ggtitle("Accepted Loans: Employment Length vs Loan Amount") +
+  xlab("Employment Length (years)") +
+  ylab("Loan Amount") +
+  theme_minimal()
+```
+The median loan amount is between 10.000 USD to 20.000 USD for the accepted loan dataset. Their loan had been accepted at this rate without much change in amount throughout the different employment length category.
+
+# Rejected loan 
+
+```{r}
+##Working on the rejected loan set, cleaning the outliers.
+# Calculate Q1, Q3, and IQR for amount requested
+Q1 <- quantile(rejected_loans$amount_requested_cleaned, 0.25, na.rm = TRUE)
+Q3 <- quantile(rejected_loans$amount_requested_cleaned, 0.75, na.rm = TRUE)
+IQR <- Q3 - Q1
+
+# Define lower and upper bound
+lower_bound <- Q1 - 1.5 * IQR
+upper_bound <- Q3 + 1.5 * IQR
+
+# Filter out outliers
+rejected_loans_filtered <- rejected_loans %>%
+  filter(amount_requested_cleaned >= lower_bound & amount_requested_cleaned <= upper_bound)
+
+# Check summary statistics of filtered data
+summary(rejected_loans_filtered$amount_requested_cleaned)
+
+```
+
+Rejected dataset has 117000 observations out of 22 million observation data which is less than 0.5% of the data in loan requested amount ranging into 1 million USD loan request. We've removed the outliers that has extensive reach and deviation from the dataset. 
+
+# **Boxplot for outliers exempted data in analysing Employment length and Amount requested for the rejected loans dataset. **
+
+```{r}
+# Boxplot without outliers
+ggplot(rejected_loans_filtered, aes(x = as.factor(emp_length_cleaned), y = amount_requested_cleaned)) +
+  geom_boxplot(fill = "lightcoral", color = "black") +
+  ggtitle("Rejected Loans: Employment Length vs Amount Requested (Outliers Removed)") +
+  xlab("Employment Length (years)") +
+  ylab("Amount Requested") +
+  theme_minimal()
+
+```
+The rejected dataset processing shows that amount requested had good amount of variation for the each employment category. Loan amounts ranged from less than 5000 USD to around 25.000USD. In order to understand the frequency of the loan amount requested we can create density plot for both accepted and rejected loan dataset. That way we can determined at what frequency how much had been requested or granted to the applicants. 
+
+
+### Density plot for the distribution of requested amount in the rejected loan dataset
+
+
+```{r}
+ggplot(rejected_loans_filtered, aes(x = amount_requested_cleaned)) +
+  geom_histogram(binwidth = 1000, fill = "lightcoral", color = "black") +
+  ggtitle("Distribution of Amount Requested (Rejected Loans)") +
+  xlab("Amount Requested") +
+  ylab("Frequency")
+
+
+```
+In the rejected loan ,out of 22 mln observations about 4 mln applicants requested 10000 USD this is the most requested amount, 2nd most requested amount is 5000 USD followed by 1000 USD, 20000USD and 15000USD. 
+
+```{r}
+# Plot the distribution of loan amounts for accepted loans
+ggplot(accepted_loans, aes(x = loan_amnt_cleaned)) +
+  geom_histogram(binwidth = 1000, fill = "lightgreen", color = "black") +
+  ggtitle("Distribution of Loan Amount (Accepted Loans)") +
+  xlab("Loan Amount") +
+  ylab("Frequency") +
+  theme_minimal()
+
+```
+
+In the accapted loan, we can see 10000USD loan package was the most granted, followed by 20000USD and 15000USD. 
+
+## Employment length pie chart (rejected loans)
+
+```{r}
+# Filter employment lengths between 1 and 10 years
+emp_length_filtered <- rejected_loans %>%
+  filter(emp_length_cleaned >= 1 & emp_length_cleaned <= 10)
+
+# Calculate the percentage of each employment length (1 to 10 years)
+emp_length_counts <- table(emp_length_filtered$emp_length_cleaned)
+emp_length_percentage <- prop.table(emp_length_counts) * 100
+
+# Convert to a data frame for easy plotting
+emp_length_df <- as.data.frame(emp_length_percentage)
+colnames(emp_length_df) <- c("Employment_Length", "Percentage")
+
+# Print the percentage table for reference
+print(emp_length_df)
+
+# Plot the data using a pie chart
+ggplot(emp_length_df, aes(x = "", y = Percentage, fill = factor(Employment_Length))) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  geom_text(aes(label = paste0(round(Percentage, 1), "%")), position = position_stack(vjust = 0.5)) +
+  ggtitle("Rejected Loans % by Employment Length") +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set3") +  # Colorful palette for the pie chart
+  labs(fill = "Years)")
+
+```
+Employment length pie chart is designed to showcase and visualize the dataset. From our graphic we can see that 69% of the rejected loan were at 5 year employment length. And 11.5% of the dataset is showing employment length of 10 years and more as the second highest category to request loan and get rejected by the employment category. 
+
+## Employment length pie chart (accepted loans)
+```{r}
+# Filter employment lengths between 1 and 10 years for accepted loans
+emp_length_filtered_accepted <- accepted_loans %>%
+  filter(emp_length_cleaned >= 1 & emp_length_cleaned <= 10)
+
+# Calculate the percentage of each employment length (1 to 10 years)
+emp_length_counts_accepted <- table(emp_length_filtered_accepted$emp_length_cleaned)
+emp_length_percentage_accepted <- prop.table(emp_length_counts_accepted) * 100
+
+# Convert to a data frame for easy plotting
+emp_length_df_accepted <- as.data.frame(emp_length_percentage_accepted)
+colnames(emp_length_df_accepted) <- c("Employment_Length", "Percentage")
+
+# Print the percentage table for reference
+print(emp_length_df_accepted)
+
+# Plot the data using a pie chart
+ggplot(emp_length_df_accepted, aes(x = "", y = Percentage, fill = factor(Employment_Length))) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  geom_text(aes(label = paste0(round(Percentage, 1), "%")), position = position_stack(vjust = 0.5)) +
+  ggtitle("Accepted Loans % by Employment Length") +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set3") +  # Use a colorful palette for better visual appeal
+  labs(fill = "Years")
+
+```
+Whereas, the accepted loan amount for the category 10 years or more of employment length had covered 42.6% of the accepted loan application.  It could be interpreted in many ways. However, now we know that 10 yrs employment category group had applied about the same amount of loan, covered only bit more than 11% of applicant in the rejected category. It can be hypothesized that the loan company had tendency to grant more of their loan requests.
+
+
+
+
+```{r}
+#Cleaning data for statistical analysis
+
+# Ensure the columns are numeric for accepted loans
+accepted_loans$emp_length_cleaned <- as.numeric(accepted_loans$emp_length_cleaned)
+accepted_loans$dti_numeric <- as.numeric(accepted_loans$dti)
+accepted_loans$loan_amnt_cleaned <- as.numeric(accepted_loans$loan_amnt)
+
+# Ensure the columns are numeric for rejected loans
+rejected_loans$emp_length_cleaned <- as.numeric(rejected_loans$emp_length_cleaned)
+rejected_loans$Debt.To.Income.Ratio_numeric <- as.numeric(gsub("%", "", rejected_loans$Debt.To.Income.Ratio)) / 100
+rejected_loans$amount_requested_cleaned <- as.numeric(rejected_loans$Amount.Requested)
+```
+
+# 4.2. Accepted loan analysis: Employment VS loan grade   VS Annual income VS DTI
+We have asked ourselves how the employment length is influencing the applicant's change of being granted the loan and we've analyzed how much percentage of the loan was granted to each employment length group ranging from less than 1 year and 10 or more years. We can now run statistical tests to see how confident or relevant this could be in such big amount of dataset. 
+
+
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+# 1. ANOVA: Employment Length vs Loan Grade
+anova_grade <- aov(emp_length_cleaned ~ grade, data = accepted_loans)
+anova_summary <- summary(anova_grade)
+
+# 2. Pearson Correlation: Employment Length vs Annual Income
+cor_emp_income <- cor.test(accepted_loans$emp_length_cleaned, accepted_loans$annual_inc, use = "complete.obs")
+
+# 3. Pearson Correlation: Employment Length vs DTI
+cor_emp_dti <- cor.test(accepted_loans$emp_length_cleaned, accepted_loans$dti_numeric, use = "complete.obs")
+
+# Create a summary table for results
+test_results <- data.frame(
+  Test = c("ANOVA: Employment Length vs Loan Grade", 
+           "Correlation: Employment Length vs Annual Income", 
+           "Correlation: Employment Length vs DTI"),
+  
+  Statistic = c(anova_summary[[1]][["F value"]][1], 
+                cor_emp_income$estimate, 
+                cor_emp_dti$estimate),
+  
+  P_Value = c(anova_summary[[1]][["Pr(>F)"]][1], 
+              cor_emp_income$p.value, 
+              cor_emp_dti$p.value)
+)
+
+# Print the summary table
+print(test_results)
+
+```
+
+
+The results of your **ANOVA test** for the relationship between **employment length** and **loan grade** are as follows:
+- **F-statistic**: 61.35
+- **P-value**: 2.01e-76 
+
+### Explanation:
+
+1. **ANOVA Test Purpose**:
+   - An **ANOVA test (Analysis of Variance)** compares the means of **employment length** across the different **loan grades** (a categorical variable). It checks if there are statistically significant differences in **employment length** between the groups (loan grades).
+
+2. **F-statistic (61.35)**:
+   - The **F-statistic** is a ratio that compares the variation **between the group means** (loan grades) to the variation **within each group**. A higher F-statistic indicates that the group means are more different from each other relative to the variation within the groups.
+   - **F = 61.35** is a relatively large value, suggesting that there are substantial differences in the **employment length** between different **loan grades**.
+
+3. **P-value (2.01e-76)**:
+   - The **p-value** tells us whether the differences in means between the loan grades are statistically significant. A **p-value** less than 0.05 is typically considered statistically significant.
+   - In this case, the **p-value is 2.01e-76**, which is **extremely small**, meaning that the probability of observing such a large F-statistic by random chance is practically zero.
+   - This strongly suggests that there is a **statistically significant difference** in **employment length** across the different **loan grades**.
+   
+   
+### Conclusion:
+- **Significant Relationship**: The **ANOVA test** shows that **employment length** varies significantly across different **loan grades**. Borrowers with different loan grades tend to have different employment lengths.
+- **Practical Interpretation**: Higher loan grades might be associated with longer employment lengths, while lower loan grades might correspond to shorter employment histories (though this would need to be confirmed by looking at the specific group means).
+
+
+# 4.3. Rejected loan analysis: Employment length and Amount requested VS DTI risk score
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+# Data Preparation: Ensure all variables are numeric
+rejected_loans$emp_length_cleaned <- as.numeric(rejected_loans$emp_length_cleaned)
+rejected_loans$amount_requested_cleaned <- as.numeric(rejected_loans$Amount.Requested)
+rejected_loans$Debt.To.Income.Ratio_numeric <- as.numeric(gsub("%", "", rejected_loans$Debt.To.Income.Ratio)) / 100
+rejected_loans$Risk_Score <- as.numeric(rejected_loans$Risk_Score)
+
+# Remove rows with missing values
+rejected_loans_cleaned <- rejected_loans %>%
+  filter(!is.na(emp_length_cleaned) & 
+         !is.na(amount_requested_cleaned) & 
+         !is.na(Debt.To.Income.Ratio_numeric) &
+         !is.na(Risk_Score))
+
+# 1. Pearson Correlation: Employment Length vs Amount Requested
+cor_emp_amount <- cor.test(rejected_loans_cleaned$emp_length_cleaned, rejected_loans_cleaned$amount_requested_cleaned, use = "complete.obs")
+
+# 2. Pearson Correlation: Employment Length vs DTI
+cor_emp_dti <- cor.test(rejected_loans_cleaned$emp_length_cleaned, rejected_loans_cleaned$Debt.To.Income.Ratio_numeric, use = "complete.obs")
+
+# 3. Linear Regression: Employment Length vs Risk Score
+reg_emp_risk <- lm(Risk_Score ~ emp_length_cleaned, data = rejected_loans_cleaned)
+summary_reg_emp_risk <- summary(reg_emp_risk)
+
+# Prepare the results for a table output
+test_results <- data.frame(
+  Test = c("Correlation: Employment Length vs Amount Requested",
+           "Correlation: Employment Length vs DTI",
+           "Linear Regression: Employment Length vs Risk Score"),
+  
+  Statistic = c(round(cor_emp_amount$estimate, 2), 
+                round(cor_emp_dti$estimate, 2),
+                round(summary_reg_emp_risk$coefficients[2, "t value"], 2)),
+  
+  P_Value = c(round(cor_emp_amount$p.value, 2), 
+              round(cor_emp_dti$p.value, 2),
+              round(summary_reg_emp_risk$coefficients[2, "Pr(>|t|)"], 2))
+)
+
+# Print the results
+print(test_results)
+
+```
+
+Based on the statistical results for the **rejected loan dataset**, we can say following: 
+
+### **Correlation: Employment Length vs Amount Requested**
+- **Correlation Coefficient**: **0.12**
+- **P-Value**: **0.00**
+
+#### Explanation:
+- The **correlation coefficient** of **0.12** suggests a **weak positive correlation** between **employment length** and the **amount requested**. This means that there is a slight tendency for people with longer employment histories to request higher loan amounts, but the relationship is not strong.
+- The **p-value** of **0.00** indicates that this result is statistically significant. Since the p-value is less than 0.05, it means that the observed correlation is unlikely to have occurred by chance. Therefore, even though the correlation is weak, it is a meaningful relationship.
+
+### **Correlation: Employment Length vs DTI **
+- **Correlation Coefficient**: **0.00**
+- **P-Value**: **0.39**
+
+#### Explanation:
+- The **correlation coefficient** of **0.00** suggests that there is **no linear relationship** between **employment length** and **debt-to-income ratio (DTI)**. In other words, the length of employment does not seem to have any meaningful impact on the debt-to-income ratio in the rejected loan dataset.
+- The **p-value** of **0.39** is much higher than 0.05, meaning the result is **not statistically significant**. This indicates that any observed relationship between these variables is likely due to chance, and there is no meaningful connection between employment length and DTI in this dataset.
+
+### **Linear Regression: Employment Length vs Risk Score**
+- **T-statistic**: **74.87**
+- **P-Value**: **0.00**
+
+#### Explanation:
+- The **t-statistic** of **74.87** is quite large, which suggests that **employment length** has a strong effect on **Risk Score** in the regression model.
+- The **p-value** of **0.00** indicates that this relationship is statistically significant. Since the p-value is less than 0.05, we can confidently say that there is a meaningful relationship between employment length and risk score.
+- However, note that while the relationship is statistically significant, this does not automatically imply a strong relationship. The actual strength of the relationship can be further interpreted by examining the regression coefficients (we had not done that analysis)
+
+
+# Summary of findings in Question 4: 
+
+In both the accepted and rejected loan datasets, **employment length** shows a statistically significant relationship with loan outcomes, though the strength varies. In the accepted dataset, **employment length** significantly differs across **loan grades**, indicating that longer employment histories may be associated with higher loan grades. In the rejected dataset, while **employment length** has a weak but significant positive correlation with the **amount requested** and a strong impact on **risk score**, it shows no meaningful relationship with **debt-to-income ratio**. Since we've have worked with big dataset, we can say that having longer years of employment history you will have higher change of getting accepted the loan. Most of the applicants with long work history had good risk score and had higher loan grades making them preferred candidates from Lending agency's perspective. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#
+#
