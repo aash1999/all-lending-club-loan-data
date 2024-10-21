@@ -1144,7 +1144,8 @@ library(dplyr)
 
 # Preprocess the data
 # Assuming 'loan_status' has values 'Fully Paid' and 'Charged Off'
-data <- data %>%
+df_final <- df_final %>%
+
   mutate(loan_status_num = ifelse(loan_status == "Fully Paid", 1, 
                                   ifelse(loan_status == "Charged Off", 0, NA)))
 
@@ -1160,12 +1161,12 @@ data <- data %>%
 
 # Create 'loan_status_binary' column
 # Assuming "Fully Paid" = 1 and "Charged Off" = 0
-data <- data %>%
+df_final <- df_final %>%
   mutate(loan_status_binary = ifelse(loan_status == "Fully Paid", 1, 
                                      ifelse(loan_status == "Charged Off", 0, NA)))
 
 # Calculate repayment rate by grade
-repayment_rate <- data %>%
+repayment_rate <- df_final %>%
   group_by(grade) %>%
   summarise(repayment_rate = mean(loan_status_binary, na.rm = TRUE)) %>%
   mutate(grade = factor(grade, levels = c("A", "B", "C", "D", "E", "F", "G")))  # Ensure correct order
@@ -1212,7 +1213,7 @@ remove_outliers <- function(x) {
 }
 
 # Prepare the data and remove outliers
-plot_data <- data %>%
+plot_data <- df_final %>%
   filter(!is.na(annual_inc) & annual_inc > 0) %>%
   mutate(grade = factor(grade, levels = c("A", "B", "C", "D", "E", "F", "G"))) %>%
   group_by(grade) %>%
@@ -1273,7 +1274,7 @@ ggsave("income_distribution_boxplot_no_outliers.png", plot = income_plot, width 
 ```{r prepare-data}
 # Create income brackets
 # Create income brackets
-data <- data %>%
+df_final <- df_final %>%
   mutate(income_bracket = cut(annual_inc, 
                               breaks = quantile(annual_inc, probs = seq(0, 1, 0.2), na.rm = TRUE),
                               labels = c('Very Low', 'Low', 'Medium', 'High', 'Very High'),
@@ -1284,7 +1285,7 @@ data$income_bracket <- factor(data$income_bracket,
                               levels = c('Very High', 'High', 'Medium', 'Low', 'Very Low'))
 
 # Calculate repayment rates
-repayment_rates <- data %>%
+repayment_rates <- df_final %>%
   group_by(grade, income_bracket) %>%
   summarize(repayment_rate = mean(loan_status_binary, na.rm = TRUE)) %>%
   pivot_wider(names_from = income_bracket, values_from = repayment_rate)
@@ -1334,7 +1335,7 @@ ggplot(heatmap_data, aes(x = income_bracket, y = grade, fill = repayment_rate)) 
 ```{r anova_test_income_across_grades}
 
 # Perform ANOVA to test for income differences across grades
-anova_result <- aov(annual_inc ~ grade, data = data)
+anova_result <- aov(annual_inc ~ grade, df_final = df_final)
 
 # Display the ANOVA summary
 anova_summary <- summary(anova_result)
@@ -1440,7 +1441,7 @@ Negligible association
 
 ```{R Loan Status Distribution by Grade}
 #3. Loan Status Distribution by Grade
-data %>%
+df_final %>%
   ggplot(aes(x = grade, fill = loan_status)) +
   geom_bar(position = "fill") +
   labs(title = "Loan Status Distribution by Grade",
