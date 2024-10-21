@@ -1133,18 +1133,14 @@ rm(dfr1)
 
 
 
-
-#Question 3 and answers go here:
-
-## Do the loan grades provided to each customer correlate to their loan repayment behavior based on income and loan status?
+# 3 Do the loan grades provided to each customer correlate to their loan repayment behavior based on income and loan status?
 
 ```{r preprocess_data}
 
-library(dplyr)
 
 # Preprocess the data
 # Assuming 'loan_status' has values 'Fully Paid' and 'Charged Off'
-df_final <- df_final %>%
+df_final <- df %>%
 
   mutate(loan_status_num = ifelse(loan_status == "Fully Paid", 1, 
                                   ifelse(loan_status == "Charged Off", 0, NA)))
@@ -1153,7 +1149,7 @@ df_final <- df_final %>%
 
 
 ## 3.1 Loan Repayment By Grade
-### BAR PLOT
+### 3.1.1 BAR PLOT
 
 
 ```{r loan_repayment_rate_by_grade, fig.width=10, fig.height=6}
@@ -1190,7 +1186,10 @@ ggplot(repayment_rate, aes(x = grade, y = repayment_rate, fill = grade)) +
     axis.text = element_text(size = 10), 
     legend.position = "none"
   )
+rm(repayment_rate)
 ```
+
+
 -Clear correlation between grade and repayment: There's a strong positive relationship between loan grade and repayment rate. As the grade improves from G to A, the repayment rate steadily increases.
 
 -Significant gap between top and bottom grades: The highest grade (A) has a repayment rate of 94%, while the lowest grade (G) is at 49.2% - a difference of nearly 45 percentage points. This highlights the substantial risk difference between the best and worst-rated loans.
@@ -1200,7 +1199,7 @@ ggplot(repayment_rate, aes(x = grade, y = repayment_rate, fill = grade)) +
 
 
 ## 3.2 Income Distribution By Loan Grade
-### BOX PLOT
+### 3.2.1 BOX PLOT
 
 ```{r income-distribution-boxplot}
 
@@ -1260,7 +1259,12 @@ print(income_plot)
 
 # Save the plot
 ggsave("income_distribution_boxplot_no_outliers.png", plot = income_plot, width = 12, height = 8, dpi = 300)
+rm(income_plot)
+rm(median_incomes)
+rm(plot_data)
 ```
+
+
 --Higher income for better grades: There's a clear trend of higher median incomes for better loan grades. Grade A has the highest median income at $74,000, while lower grades (C through G) have lower median incomes around $60,000-$62,000.
 
 --Income disparity narrows in lower grades: The income distributions for grades C through G are very similar, with median incomes clustered closely together. This suggests that factors other than income may be more influential in determining these lower grades.
@@ -1269,7 +1273,7 @@ ggsave("income_distribution_boxplot_no_outliers.png", plot = income_plot, width 
 
 
 
-## Data Preparation for Heatmap Analysis
+## 3.3 Data Preparation for Heatmap Analysis
 
 ```{r prepare-data}
 # Create income brackets
@@ -1281,7 +1285,7 @@ df_final <- df_final %>%
                               include.lowest = TRUE))
 
 # Reorder income_bracket factor levels
-data$income_bracket <- factor(data$income_bracket, 
+df_final$income_bracket <- factor(df_final$income_bracket, 
                               levels = c('Very High', 'High', 'Medium', 'Low', 'Very Low'))
 
 # Calculate repayment rates
@@ -1292,11 +1296,13 @@ repayment_rates <- df_final %>%
 
 # Display the repayment rates
 print(repayment_rates)
+rm(heatmap_data)
 ```
 
 
-## 3.3 Repayment Rate by Grade and Income Bracket 
-### HEATMAP
+
+## 3.4 Repayment Rate by Grade and Income Bracket 
+### 3.4.1 HEATMAP
 
 
 ```{r repayment-heatmap, fig.width=12, fig.height=8}
@@ -1320,8 +1326,11 @@ ggplot(heatmap_data, aes(x = income_bracket, y = grade, fill = repayment_rate)) 
        y = "Loan Grade") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
+rm(heatmap_data)
+rm(repayment_rates)
 ```
+
+
 --Grade is the primary determinant of repayment: There's a clear vertical gradient showing that loan grade has a stronger influence on repayment rates than income. Grade A loans consistently have the highest repayment rates (91-95%) across all income brackets, while Grade G loans have the lowest (46-57%)
 
 --Income impact varies by grade: For higher-grade loans (A-C), income has minimal effect on repayment rates. However, for lower-grade loans (D-G), there's a more noticeable positive correlation between income and repayment rates, particularly for the "Very High" income bracket.
@@ -1330,12 +1339,12 @@ ggplot(heatmap_data, aes(x = income_bracket, y = grade, fill = repayment_rate)) 
 
 
 
-## 3.4 ANOVA Test
+## 3.5 ANOVA Test
 
 ```{r anova_test_income_across_grades}
 
 # Perform ANOVA to test for income differences across grades
-anova_result <- aov(annual_inc ~ grade, df_final = df_final)
+anova_result <- aov(annual_inc ~ grade, data = df_final)
 
 # Display the ANOVA summary
 anova_summary <- summary(anova_result)
@@ -1345,8 +1354,12 @@ cat("ANOVA test results for income differences across grades:\n")
 cat(sprintf("F-statistic = %.2f, p-value = %.4f\n", 
             anova_summary[[1]]$`F value`[1], 
             anova_summary[[1]]$`Pr(>F)`[1]))
+rm(anova_result)
+rm(anova_summary)
 
 ```
+
+
 --ANOVA test results for income differences across grades:
 F-statistic = 1260.67, p-value = 0.0000
 
@@ -1357,13 +1370,13 @@ F-statistic = 1260.67, p-value = 0.0000
 --Confirmation of visual trends: These results statistically confirm the visual trends observed in previous charts, where higher loan grades were associated with higher incomes. The ANOVA provides robust evidence that these income differences across grades are not due to chance.
 
 
-## 3.5 Chi Square Test Grade Vs Loan Status
+## 3.6 Chi Square Test Grade Vs Loan Status
 
 
 
 ```{r chi_square_test}
 # Create a contingency table
-contingency_table <- table(data$grade, data$loan_status)
+contingency_table <- table(df_final$grade, df_final$loan_status)
 
 # Perform chi-square test
 chi_square_result <- chisq.test(contingency_table)
@@ -1385,7 +1398,9 @@ print(contingency_table)
 # Print expected frequencies
 cat("\nExpected frequencies:\n")
 print(chi_square_result$expected)
+rm(chi_square_result)
 ```
+
 
 --Highly significant relationship: The extremely low p-value (0.0000) indicates a statistically significant relationship between loan grades and loan outcomes. This suggests that loan grade is a strong predictor of loan performance.
 
@@ -1395,7 +1410,7 @@ print(chi_square_result$expected)
 
 
 
-## Interpretation Of chi Square Test 
+### 3.6.1 Interpretation Of chi Square Test 
 
 ```{r interpretation}
 # Interpretation
@@ -1425,18 +1440,11 @@ if (cramer_v < 0.1) {
   cat("Strong association")
 }
 ```
---Interpretation:
-The chi-square test shows a statistically significant association between Grade and Loan Status (p < 0.05).
-This suggests that the loan grade is not independent of the loan status.
-
-Effect size (Cramer's V): 0.0976
-Interpretation of Cramer's V:
-Negligible association
 
 
 
-## 3.6 Loan Status Distribution By Grade 
-### STACKED BAR CHART
+## 3.7 Loan Status Distribution By Grade 
+### 3.7.1 STACKED BAR CHART
 
 
 ```{R Loan Status Distribution by Grade}
@@ -1451,6 +1459,8 @@ df_final %>%
   scale_y_continuous(labels = scales::percent_format())
 
 ```
+
+
 --Inverse relationship between grade and charge-offs: There's a clear trend of increasing charge-off rates as the loan grade decreases. Grade A loans have the lowest proportion of charge-offs, while Grade G has the highest. This reinforces the higher risk associated with lower-grade loans.
 
 --Fully paid loans dominate higher grades: Grades A and B show a significantly higher proportion of fully paid loans compared to lower grades. This indicates that higher-grade loans are more likely to be repaid in full, aligning with their lower risk profile.
@@ -1462,7 +1472,14 @@ df_final %>%
 
 
 
-#Conclusion is here. 
+# 5 Conclusion
+
+Interest rates and term are the strongest predictors of loan charge offs, while loan amount does not significantly affect loan status.
+The analysis highlights significant shifts in lending practices and loan applicant profiles before and after 2015. A more conservative lending approach emerged post-2015, marked by stricter criteria for risk scores and a preference for applicants with lower debt-to-income ratios and higher creditworthiness.
+Loan grades strongly correlate with repayment behavior, with higher grades consistently showing better repayment rates. Income levels play a secondary role. The grading system appears to be effective in predicting loan outcomes.
+In the accepted dataset, employment length significantly varies by loan grade, suggesting longer employment is linked to higher grades. In the rejected dataset, employment length has a weak but significant correlation with amount requested and a strong, significant impact on risk score, but shows no significant relationship with debt-to-income ratio.
+
+
 
 
 
