@@ -30,10 +30,26 @@ library(corrplot)
 library(lubridate)
 library(maps)
 library(ggmap)
+library(tidyverse)
+library(forcats)
+library(readr)
+library(reshape2)
+library(viridis)  
+library(ggcorrplot) 
 source("./HelperFunctions/fetchSubset.R")
 ```
 
-# Overview
+
+```{r}
+df <- read.csv("../DataSet/cleaned_accepted_2013_to_2018Q4.csv")
+col_names = c("Debt-To-Income Ratio", "Risk_Score","Application Date")
+dfr <- fetch_subset(df_location = "../DataSet/filtered_rejected_2013_to_2018Q.csv", col_names = col_names, nrows = c(1,-1))
+set.seed(1)  # For reproducibility
+dfr <- dfr %>% sample_frac(0.25)
+
+```
+
+# i. Overview
 
 Since 2006, LendingClub has been a U.S. financial services company that has facilitated loan contracts. Our research will focus on LendingClub's loan data that consist of approved and rejected loans between 2013-2018. To understand LendingClub’s clientele, we will analyze borrower and loan characteristics to assess risk levels, determine loan acceptance, and understand what factors influence whether accepted loans will be fully repaid. To accomplish this, we will ask the following SMART questions:
 
@@ -46,7 +62,7 @@ Since 2006, LendingClub has been a U.S. financial services company that has faci
 
 4. Is there a relationship between employment length and the amount requested for rejected loans and how does it compare to the customers that had accepted loans?
 
-# Data Dictionary
+# ii. Data Dictionary
 
 1. Funded Amount: The total amount of the loan to be paid off.
 
@@ -67,14 +83,14 @@ Since 2006, LendingClub has been a U.S. financial services company that has faci
 9. Employment Length: The amount in years the customer has been employed. 
 
 
-# Question 1: How do the loan features of term, amount, and interest rate individually influence the likelihood of a loan being charged off versus being fully paid? 
+# 1. How do the loan features of term, amount, and interest rate individually influence the likelihood of a loan being charged off versus being fully paid? 
 
 This question focuses on assessing risk levels and looking into trends of when the company can expect to see a loan charged off (lender has accepted the loan as unlikely to recover) or being paid off. 
 
 Assumptions:
 In terms of loan status, we are only analyzing the "Fully Paid" and "Charge Off" status.
 
-## Data Types & Data Cleaning
+## 1.1 Data Types & Data Cleaning
 
 For this question, we will be looking at funded amount, loan status, term, and interest rate. 
 
@@ -82,17 +98,6 @@ Based on this data, the funded amount and interest rate are data types that are 
 
 To retrieve this information, data cleaning was done on the accepted loans dataset that initially contained 2,157,894 million observations. After filtering, the total observations stand at 1,245,285 observations.    
 
-```{r}
-# imports 
-
-
-
-```
-
-```{r, echo=True}
-df <- read.csv("../DataSet/cleaned_accepted_2013_to_2018Q4.csv")
-
-```
 
 ```{r, echo=TRUE}
 
@@ -122,9 +127,9 @@ str(df_final)
 
 ```
 
-## Normality of Loan Amount & Interest Rate
+## 1.2 Normality of Loan Amount & Interest Rate
 
-### QQ Plot of Loan Amount
+### 1.2.1 QQ Plot of Loan Amount
 
 ```{r, echo=TRUE}
 
@@ -135,7 +140,7 @@ rm(amount_plot)
 
 The loan amount data does not appear to follow a normal distribution based on the QQ plot, as there are significant deviations from the reference line, particularly at the tails. The lower quantiles fall below the line, while the upper quantiles rise far above it, indicating the presence of heavy tails. Additionally, the stepped line in the middle suggests that the data isn't evenly distributed. Even with the outliers removed, there are still extreme deviations at both ends therefore showing that this is not a normal distribution.    
 
-### QQ Plot of Interest Rate
+### 1.2.2 QQ Plot of Interest Rate
 
 
 ```{r, echo=TRUE}
@@ -149,11 +154,11 @@ The interest rate also shows similar trends. There are major deviations from the
 
 Overall, both loan amount and interest rate distributions are not normal when outliers are included. While showing improvement in normality when removing outliers, deviations still occur at the extremes. As a result, these datasets don't follow normality due to these deviations. 
 
-## Descriptive Statistics
+## 1.3 Descriptive Statistics
 
 Initial statistics summarizes data that can help in identifying patterns, trends, and outliers. To demonstrate this, loan status will be analyzed against each loan feature (term, amount and interest rate) to see any relationships and patterns.  
 
-### Relationship between Loan Status and Loan Term
+### 1.3.1 Relationship between Loan Status and Loan Term
 
 ```{r, echo=TRUE}
 
@@ -184,7 +189,7 @@ When visually shown on a stacked bar chart, you'll notice that shorter terms are
 Overall, shorter loan terms are likelier to result in a charge off and appear to influence loan status. 
 
 
-### Relationship between Loan Status and Loan Amount
+### 1.3.1 Relationship between Loan Status and Loan Amount
 
 ```{r, echo=TRUE}
 # Descriptive Stats of Loan Amount Separated by Loan Status
@@ -225,7 +230,7 @@ Based on the boxplot, one commonality is the several outliers that exist around 
 Overall, larger loan amounts may be associated with a higher charged off risk. However holistically, loan amount alone does not appear to have a strong influence on whether a loan will be charged off or fully paid, given overlapping distributions. 
 
 
-### Relationship Between Loan Status and Interest Rate
+### 1.3.2 Relationship Between Loan Status and Interest Rate
 
 ```{r, echo=TRUE}
 # Descriptive Stats of Interest Rate Separated by Loan Status
@@ -273,10 +278,6 @@ Similar to the statistics, the histogram shows interest rates having a strong in
 Overall, loans with higher interest rates are likelier to be charged off, making interest rates a strong influence of loan charge offs. 
 
 
-
-#Question 2 and answers go here:
-
-
 ```{r}
 columns_to_target = c("annual_inc", "dti", "fico_range_high", "fico_range_low", "loan_amnt", 
   "int_rate", "earliest_cr_line", "revol_util", "delinq_2yrs", "pub_rec", 
@@ -288,12 +289,7 @@ columns_to_target = c("annual_inc", "dti", "fico_range_high", "fico_range_low", 
 #df <- fetch_subset(df_location = df_file_path, col_names = columns_to_target, nrows = c(1,-1))
 df_final <- df %>% select(all_of(columns_to_target))
 
-```
 
-
-
-
-```{r}
 convert_to_factors <- function(df) {
   # Columns to convert to factors based on the provided list
   factor_cols <- c("home_ownership", "verification_status", 
@@ -323,10 +319,7 @@ convert_to_factors <- function(df) {
 df_final <- df_final[-1,]
 df_final <- convert_to_factors(df_final)
 #str(df_final)
-```
 
-
-```{r}
 # Convert specified columns to numeric
 
 df_final$revol_util <- as.numeric(df_final$revol_util)
@@ -346,12 +339,14 @@ if (any(is.na(df_final$dti))) {
   warning("NAs introduced in 'dti' during conversion.")
 }
 
+
+df_final$issue_d <- as.Date(df_final$issue_d, format = "%Y-%m-%d")
 ```
 
-```{r}
-df_final$issue_d <- as.Date(df_final$issue_d, format = "%Y-%m-%d")
-str(df_final)
-```
+# 2 How do variables such as dti, annual_inc, int_rate, and fico_range impact the likelihood of a loan being fully paid or charged off year over year from 2013 to 2018? What trends can be identified in the data, and how do these variables differ between the two loan statuses over time?
+
+## 2.1 Analysis of Charged-Off Loan Percentage (2013-2018)
+
 
 ```{r}
 # LINE PLOT
@@ -420,6 +415,14 @@ rm(df_merged)
 rm(df_total_per_quarter)
 
 ```
+
+The charged-off percentage increases from Q1 2013 (14.9%) to Q2 2015 (18.5%), then decreases drastically until Q4 2018. There could be two explanations for this decline:
+
+   - Lenders may have changed their loan selection parameters.
+   - Since most loan tenures exceed three years, some active loans might charge off in the future (after 2018), for which we don't have data.
+
+
+## 2.2 Hypothesis Testing for Key Financial Features
 
 ```{r}
 # T-test
@@ -506,7 +509,83 @@ rm(t_test_results_filtered)
 
 ```
 
+- **Annual Income (annual_inc)**: 
+  - T-value = -14.29, P-value = 2.66e-46
+  - **Result**: Reject H0
+  - Interpretation: Significant difference in annual income, indicating that it is a key feature for loan outcomes.
 
+- **Debt-to-Income Ratio (dti)**: 
+  - T-value = -20.26, P-value = 3.66e-91
+  - **Result**: Reject H0
+  - Interpretation: Significant difference in debt-to-income ratio, suggesting its importance in distinguishing loan status.
+
+- **FICO Range High (fico_range_high)** and **FICO Range Low (fico_range_low)**: 
+  - T-value = -21.90, P-value = 3.33e-106 (high), 3.32e-106 (low)
+  - **Result**: Reject H0
+  - Interpretation: Both FICO score ranges are critical indicators of loan status.
+
+- **Loan Amount (loan_amnt)**: 
+  - T-value = -1.84, P-value = 6.65e-02
+  - **Result**: Fail to Reject H0
+  - Interpretation: No significant difference in loan amount with respect to loan outcomes.
+
+- **Interest Rate (int_rate)**: 
+  - T-value = 7.60, P-value = 2.99e-14
+  - **Result**: Reject H0
+  - Interpretation: Interest rate is a significant differentiator in loan status.
+
+- **Revolving Utilization (revol_util)**: 
+  - T-value = 65.33, P-value = 0.00e+00
+  - **Result**: Reject H0
+  - Interpretation: Strong influence of revolving utilization on loan status.
+
+- **Delinquencies in 2 Years (delinq_2yrs)**: 
+  - T-value = -6.79, P-value = 1.11e-11
+  - **Result**: Reject H0
+  - Interpretation: Significant impact of past delinquencies on loan status.
+
+- **Public Records (pub_rec)**: 
+  - T-value = -18.93, P-value = 7.76e-80
+  - **Result**: Reject H0
+  - Interpretation: Public records significantly affect loan outcomes.
+
+- **Total Accounts (total_acc)**: 
+  - T-value = 21.91, P-value = 2.49e-106
+  - **Result**: Reject H0
+  - Interpretation: The total number of accounts plays a critical role in determining loan status.
+
+- **Open Accounts (open_acc)**: 
+  - T-value = -6.28, P-value = 3.30e-10
+  - **Result**: Reject H0
+  - Interpretation: Number of open accounts significantly influences loan status.
+
+- **Installment Amount (installment)**: 
+  - T-value = -16.88, P-value = 6.75e-64
+  - **Result**: Reject H0
+  - Interpretation: Installment amount is a significant factor in loan status differentiation.
+
+- **Delinquency Amount (delinq_amnt)**: 
+  - T-value = -4.22, P-value = 2.42e-05
+  - **Result**: Reject H0
+  - Interpretation: Past delinquency amounts significantly impact loan status.
+
+- **Collections in 12 Months (collections_12_mths_ex_med)**: 
+  - T-value = -15.26, P-value = 1.42e-52
+  - **Result**: Reject H0
+  - Interpretation: The number of collections in 12 months is a key feature influencing loan status.
+
+- **Charge-off within 12 Months (chargeoff_within_12_mths)**: 
+  - T-value = -2.94, P-value = 3.32e-03
+  - **Result**: Reject H0
+  - Interpretation: Significant difference in charge-off occurrences within 12 months.
+
+- **Months Since Last Delinquency (mths_since_last_delinq)**: 
+  - T-value = 1.18, P-value = 2.39e-01
+  - **Result**: Fail to Reject H0
+  - Interpretation: No significant difference in months since the last delinquency.
+
+
+## 2.3 Correlation Plot Analysis
 ```{r}
 #COOR PLOT
 
@@ -519,7 +598,6 @@ numeric_df <- df_final[, .SD, .SDcols = sapply(df_final, is.numeric)]
 
 # Calculate the correlation matrix
 cor_matrix <- cor(numeric_df, use = "pairwise.complete.obs")
-
 # Set plotting parameters for larger plot size
 # Create a larger plot window
 options(repr.plot.width = 35, repr.plot.height = 45)  # Use this in RMarkdown or Jupyter Notebooks
@@ -540,6 +618,23 @@ rm(cor_matrix)
 
 ```
 
+- **Income and Loan Characteristics**: 
+  - `annual_inc` has a moderate positive correlation with `loan_amnt` (0.1949) and `installment` (0.188), suggesting that individuals with higher income tend to take larger loans with higher installments.
+  - `dti` has a weak positive correlation with `int_rate` (0.1239), indicating a slight increase in interest rates for borrowers with higher debt-to-income ratios.
+
+- **Credit Score Indicators**:
+  - `fico_range_high` and `fico_range_low` have strong negative correlations with `int_rate` (-0.4049), indicating that better credit scores are associated with lower interest rates.
+  - `fico_range_high` and `fico_range_low` are negatively correlated with `revol_util` (-0.4747), suggesting that individuals with higher credit scores tend to have lower revolving credit utilization.
+
+- **Delinquency Metrics**:
+  - `delinq_2yrs` has a strong negative correlation with `mths_since_last_delinq` (-0.5524), indicating that more recent delinquencies are associated with a higher number of delinquencies in the past two years.
+  - `pub_rec` shows a weak negative correlation with `loan_amnt` (-0.0628), suggesting a slight decrease in loan amounts with higher public records of delinquencies.
+
+- **Open Accounts and Total Accounts**:
+  - `total_acc` and `open_acc` are highly correlated (0.7199), which is expected as they both measure account quantities in credit reports.
+  - `total_acc` has a weak positive correlation with `loan_amnt` (0.1966), indicating that borrowers with more accounts tend to have slightly higher loan amounts.
+
+## 2.4 Analysis of Charged-Off Loans by State
 
 ```{r}
 # US MAP
@@ -611,8 +706,6 @@ frequency_data <- frequency_data %>%
 
 # Step 9: Create the map
 us_map <- map_data("state")
-
-
 # Step 10: Plot with state symbols
 ggplot() +
   # Base map
@@ -668,6 +761,35 @@ rm(total_loans_before)
 rm(frequency_data_before)
 
 ```
+
+- **Iowa (IA)**:
+  - **Before**: 50.0%
+  - **After**: NA
+  - **Insight**: The charged-off percentage was significantly high before the intervention, but data for after the intervention is not available, indicating a potential area for further investigation.
+
+- **Nebraska (NE)**:
+  - **Before**: 50.0%
+  - **After**: 11.51%
+  - **Insight**: A substantial decrease from 50.0% to 11.51%, indicating a successful intervention that significantly improved loan performance.
+
+- **Florida (FL)**:
+  - **Before**: 18.6%
+  - **After**: 10.52%
+  - **Insight**: A notable decrease of 8.08 percentage points, suggesting a positive impact of the intervention.
+
+- **Mississippi (MS)**:
+  - **Before**: 21.4%
+  - **After**: 11.87%
+  - **Insight**: The charged-off percentage decreased by 9.53 percentage points, indicating improved loan performance.
+
+- **California (CA)**:
+  - **Before**: 16.9%
+  - **After**: 10.32%
+  - **Insight**: A reduction of 6.58 percentage points, demonstrating effective measures in managing loan defaults.
+
+The analysis highlights states like Nebraska and Iowa as significant cases with varying outcomes in charged-off loans. The successful interventions in Nebraska indicate that targeted strategies can yield substantial improvements in loan performance.
+
+## 2.5 Comparison of Debt-to-Income Ratios: Charged-Off vs. Fully Paid Loans (2013-2018)
 
 ```{r}
 
@@ -725,8 +847,14 @@ rm(chi_sq_result)
 
 ```
 
+- **Median DTI Comparison**: Each quarter, the median DTI for charged-off applicants is higher compared to fully paid applicants, with an average difference of 4.3%.
+- **Trends Over Time**: The medians of DTI show an upward trend toward 2015, followed by a slight decrease until 2018.
+
+The analysis indicates that higher DTI ratios are associated with charged-off loans, suggesting a potential risk factor for loan defaults. The observed trends in DTI medians may warrant further investigation to understand the underlying causes.
 
 
+
+## 2.6 Radar Chart Analysis of Loan Characteristics (2014 vs. 2018)
 ```{r}
 # RADAR CHART
 
@@ -798,7 +926,6 @@ radar_data_2014_2017 <- rbind(max = rep(1, ncol(radar_data_2014_2017)),
 
 # Set the background color to white
 par(bg = "white")  
-
 # Step 9: Plot the radar chart for 2014 and 2017
 radarchart(radar_data_2014_2017, 
            axistype = 1,  # Set axis type
@@ -829,34 +956,14 @@ rm(radar_data_2014_2017)
 
 ```
 
+- **Interest Rate (int_rate):** The interest rate decreased from 36.8% in 2014 to 30.4% in 2017, indicating an improvement in loan affordability over time.
+- **Annual Income (annual_inc):** The annual income remained relatively stable, with a slight decline from 38.1% in 2014 to 38.0% in 2017, suggesting that income levels did not significantly impact loan eligibility during this period.
+- **FICO Score Range:** The lower bound of the FICO score range increased from 26.3% in 2014 to 30.8% in 2017, indicating a potential shift towards lending to higher credit quality borrowers.
+- **Debt-to-Income Ratio (dti):** The debt-to-income ratio improved slightly, decreasing from 42.8% in 2014 to 39.0% in 2017, suggesting better financial health among borrowers over time.
 
 
 
-
-
-
-
-
-
-
-
-
-```{r}
-col_names = c("Debt-To-Income Ratio", "Risk_Score","Application Date")
-dfr <- fetch_subset(df_location = "../DataSet/filtered_rejected_2013_to_2018Q.csv", col_names = col_names, nrows = c(1,-1))
-set.seed(1)  # For reproducibility
-dfr <- dfr %>% sample_frac(0.25)
-```
-
-
-
-```{r}
-rm(df_final)
-str(dfr)
-
-```
-
-
+## 2.7 Contour Plot Comparing Risk Score vs. Debt-to-Income Ratio Before and After 2015
 
 ```{r}
 # Contour PLOT
@@ -928,9 +1035,25 @@ rm(dfr_after_2015_clean)
 
 ```
 
+- **General Distribution**:  
+  The contour plot shows distinct areas of concentration of rejected loan applications with varying risk scores and debt-to-income (DTI) ratios. The highest concentration for both periods is around the DTI ratio of 0.2 to 0.3 and risk scores between 600 and 700, indicating that a significant portion of rejections occurred in this range.
+
+- **Before 2015 vs After 2015**:
+    - The **blue contours** (Before 2015) indicate a denser concentration of rejected applicants with risk scores between 600 and 700 and a slightly higher DTI ratio compared to **red contours** (After 2015).
+    - After 2015, the contours suggest a shift in the distribution of rejected loans, with more applicants being rejected both at lower risk scores (500-600) and higher risk scores (700+). This indicates that rejection criteria may have broadened to encompass a wider range of applicants.
+
+- **Debt-to-Income Ratio**:  
+  There is a noticeable shift in the **red contour** (After 2015) towards a higher DTI ratio (around 0.4 to 0.6) at various risk levels, compared to **blue contours** (Before 2015). This suggests that after 2015, rejected applicants tended to have higher debt burdens relative to their income, potentially reflecting either more lenient application behavior or tighter lending standards.
+
+- **Risk Concentration Shifts**:  
+    - The **After 2015** data shows a wider spread in the DTI ratio for rejected applicants with risk scores between 500 and 600, indicating that applicants with lower risk scores are increasingly being rejected for higher debt-to-income ratios.
+    - In contrast, **Before 2015**, individuals with lower risk scores (below 600) who were rejected had tighter DTI ratios, suggesting that lending practices were more stringent in this category before 2015.
+
+- **Implication on Risk**:  
+  The increased spread in both the risk scores and DTI ratios for rejected loans after 2015 may indicate changes in risk assessment and rejection criteria. Lenders might have shifted their focus, possibly due to economic changes post-2015, leading to the rejection of both higher-risk and lower-risk applicants with varying debt profiles.
 
 
-
+## 2.8 Histogram Analysis of Debt-to-Income Ratios (DTI) for Rejected Loans
 
 ```{r}
 # HISTOGRAM 
@@ -995,61 +1118,14 @@ rm(df_no_outliers)
 ```
 
 
-
-```{r}
-# DENSITY GRAPH
-
-# Load necessary libraries
-library(ggplot2)
-library(dplyr)
-
-dfr1 <- dfr
-
-# Ensure the Debt-To-Income Ratio is numeric
-dfr1$dti <- as.numeric(gsub("%", "", dfr1$`Risk_Score`))  # Remove '%' and convert to numeric
-
-# Ensure the Application Date is in Date format
-dfr1$`Application Date` <- as.Date(dfr1$`Application Date`, format = "%Y-%m-%d")
-
-# Remove NA values (if any) in Debt-To-Income Ratio and Application Date
-dfr1 <- dfr1 %>% filter(!is.na(dti) & !is.na(`Application Date`))
-
-# Define a function to remove outliers based on IQR
-remove_outliers <- function(data) {
-  Q1 <- quantile(data$dti, 0.25, na.rm = TRUE)  # 1st quartile (25th percentile)
-  Q3 <- quantile(data$dti, 0.75, na.rm = TRUE)  # 3rd quartile (75th percentile)
-  IQR <- Q3 - Q1  # Interquartile range
-  lower_bound <- Q1 - 1.5 * IQR
-  upper_bound <- Q3 + 1.5 * IQR
-  data %>%
-    filter(dti >= lower_bound & dti <= upper_bound)  # Remove outliers
-}
-
-# Apply the function to remove outliers
-dfr_no_outliers <- remove_outliers(dfr1)
-
-# Split the data into before and after 2015
-dfr_before_2015 <- dfr_no_outliers %>% filter(`Application Date` < as.Date("2015-01-01"))
-dfr_after_2015 <- dfr_no_outliers %>% filter(`Application Date` >= as.Date("2015-01-01"))
-
-# Create the line distribution plot using ggplot
-ggplot() +
-  geom_density(data = dfr_before_2015, aes(x = dti, color = "Before 2015"), size = 1.2) +
-  geom_density(data = dfr_after_2015, aes(x = dti, color = "After 2015"), size = 1.2) +
-  labs(title = "Density Plot of Risk Score (Before and After 2015)",
-       x = "Risk Score",
-       y = "Density",
-       color = "Period") +
-  theme_minimal() +
-  scale_color_manual(values = c("Before 2015" = "blue", "After 2015" = "red"))
-
-rm(dfr1)
-rm(dfr_no_outliers)
-rm(dfr_before_2015)
-rm(dfr_after_2015)
+- **DTI Distribution Before 2015:** The histogram for DTI values prior to 2015 shows a relatively even distribution across various DTI ranges, with no significant concentration in any specific range.
+- **DTI Distribution After 2015:** 
+  - A notable increase in rejections is observed for DTI values less than 5, indicating stricter lending criteria during this period.
+  - Following the initial spike at low DTI values, there is a gradual decline in rejection counts as DTI increases towards 9.
+  - Beyond a DTI of 9, the distribution appears to be right-skewed, suggesting that while there are fewer rejections in this range, those with very high DTIs are still facing rejections.
+- **Overall Trend:** The analysis indicates a shift in lending standards after 2015, where lower DTIs are increasingly leading to loan rejections, potentially reflecting a more cautious approach by lenders to manage risk.
 
 
-```
 ```{r}
 rm(dfr_combined)
 rm(dfr1)
@@ -1060,9 +1136,242 @@ rm(dfr1)
 
 #Question 3 and answers go here:
 
+## Do the loan grades provided to each customer correlate to their loan repayment behavior based on income and loan status?
+
+```{r preprocess_data}
 
 
-#Question 4 and answers go here:
+# Preprocess the data
+# Assuming 'loan_status' has values 'Fully Paid' and 'Charged Off'
+df_final <- df %>%
+  mutate(loan_status_num = ifelse(loan_status == "Fully Paid", 1, 
+                                  ifelse(loan_status == "Charged Off", 0, NA)))
+
+```
+
+
+
+```{r loan_repayment_rate_by_grade, fig.width=10, fig.height=6}
+
+
+# Create 'loan_status_binary' column
+# Assuming "Fully Paid" = 1 and "Charged Off" = 0
+df_final <- df_final %>%
+  mutate(loan_status_binary = ifelse(loan_status == "Fully Paid", 1, 
+                                     ifelse(loan_status == "Charged Off", 0, NA)))
+
+# Calculate repayment rate by grade
+repayment_rate <- df_final %>%
+  group_by(grade) %>%
+  summarise(repayment_rate = mean(loan_status_binary, na.rm = TRUE)) %>%
+  mutate(grade = factor(grade, levels = c("A", "B", "C", "D", "E", "F", "G")))  # Ensure correct order
+
+# Create the enhanced bar plot
+ggplot(repayment_rate, aes(x = grade, y = repayment_rate, fill = grade)) +
+  geom_bar(stat = "identity", width = 0.7) +
+  geom_text(aes(label = scales::percent(repayment_rate, accuracy = 0.1)), 
+            vjust = -0.5, size = 4, fontface = "bold") +
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0, 1)) +
+  scale_fill_viridis_d() +
+  labs(title = "Loan Repayment Rate by Grade",
+       subtitle = "Higher grades show better repayment rates",
+       x = "Loan Grade",
+       y = "Repayment Rate") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, size = 12, face = "italic"),
+    axis.title = element_text(face = "bold"),
+    axis.text = element_text(size = 10), 
+    legend.position = "none"
+  )
+rm(repayment_rate)
+```
+
+
+
+
+
+```{r income-distribution-boxplot}
+
+# Load required libraries
+library(tidyverse)
+library(scales)
+library(viridis)
+
+# Function to remove outliers using IQR method
+remove_outliers <- function(x) {
+  qnt <- quantile(x, probs = c(0.25, 0.75), na.rm = TRUE)
+  H <- 1.5 * IQR(x, na.rm = TRUE)
+  x[x < (qnt[1] - H) | x > (qnt[2] + H)] <- NA
+  return(x)
+}
+
+# Prepare the data and remove outliers
+plot_data <- df_final %>%
+  filter(!is.na(annual_inc) & annual_inc > 0) %>%
+  mutate(grade = factor(grade, levels = c("A", "B", "C", "D", "E", "F", "G"))) %>%
+  group_by(grade) %>%
+  mutate(annual_inc_clean = remove_outliers(annual_inc)) %>%
+  filter(!is.na(annual_inc_clean)) %>%
+  ungroup()
+
+# Calculate median income for annotation
+median_incomes <- plot_data %>%
+  group_by(grade) %>%
+  summarise(median_income = median(annual_inc_clean))
+
+# Create the enhanced boxplot without outliers
+income_plot <- ggplot(plot_data, aes(x = grade, y = annual_inc_clean, fill = grade)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA) +
+  geom_text(data = median_incomes, aes(y = median_income, label = scales::dollar(median_income)),
+            vjust = -0.5, size = 3, fontface = "bold") +
+  scale_y_log10(labels = scales::dollar_format(), 
+                breaks = scales::trans_breaks("log10", function(x) 10^x),
+                minor_breaks = scales::trans_breaks("log10", function(x) 10^x/2)) +
+  scale_fill_viridis_d(option = "D", begin = 0.3, end = 0.9) +
+  labs(title = "Income Distribution by Loan Grade",
+       x = "Loan Grade",
+       y = "Annual Income ") +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 22, face = "bold", margin = margin(b = 10)),
+    plot.subtitle = element_text(hjust = 0.5, size = 16, face = "italic", margin = margin(b = 20)),
+    axis.title = element_text(face = "bold", size = 16),
+    axis.text = element_text(size = 12),
+    legend.position = "none",
+    panel.grid.major = element_line(color = "gray90"),
+    panel.grid.minor = element_line(color = "gray95"),
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "gray98", color = NA),
+    plot.margin = margin(t = 20, r = 20, b = 20, l = 20)
+  ) +
+  coord_cartesian(clip = "off") +
+  annotate("text", x = Inf, y = Inf, label = "BOXPLOT",
+           hjust = 1.1, vjust = 2, size = 4.5, fontface = "italic", color = "gray30")
+
+# Display the plot (optional)
+print(income_plot)
+
+# Save the plot
+ggsave("income_distribution_boxplot_no_outliers.png", plot = income_plot, width = 12, height = 8, dpi = 300)
+rm(income_plot)
+rm(median_incomes)
+rm(plot_data)
+```
+
+```{r prepare-data}
+# Create income brackets
+# Create income brackets
+df_final <- df_final %>%
+  mutate(income_bracket = cut(annual_inc, 
+                              breaks = quantile(annual_inc, probs = seq(0, 1, 0.2), na.rm = TRUE),
+                              labels = c('Very Low', 'Low', 'Medium', 'High', 'Very High'),
+                              include.lowest = TRUE))
+
+# Reorder income_bracket factor levels
+df_final$income_bracket <- factor(df_final$income_bracket, 
+                              levels = c('Very High', 'High', 'Medium', 'Low', 'Very Low'))
+
+# Calculate repayment rates
+repayment_rates <- df_final %>%
+  group_by(grade, income_bracket) %>%
+  summarize(repayment_rate = mean(loan_status_binary, na.rm = TRUE)) %>%
+  pivot_wider(names_from = income_bracket, values_from = repayment_rate)
+
+# Display the repayment rates
+print(repayment_rates)
+rm(repayment_rate)
+```
+
+```{r repayment-heatmap, fig.width=12, fig.height=8}
+# Prepare df_final for heatmap
+heatmap_data <- repayment_rates %>%
+  pivot_longer(cols = -grade, names_to = "income_bracket", values_to = "repayment_rate")
+
+# Ensure income_bracket is a factor with correct order
+heatmap_data$income_bracket <- factor(heatmap_data$income_bracket, 
+                                      levels = c('Very High', 'High', 'Medium', 'Low', 'Very Low'))
+
+# Create heatmap
+ggplot(heatmap_data, aes(x = income_bracket, y = grade, fill = repayment_rate)) +
+  geom_tile() +
+  geom_text(aes(label = scales::percent(repayment_rate, accuracy = 0.1)), color = "black") +
+  scale_fill_gradientn(colors = c("yellow", "green", "blue"), 
+                       labels = scales::percent_format(accuracy = 1),
+                       name = "Repayment Rate") +
+  labs(title = "Repayment Rate by Grade and Income Bracket",
+       x = "Income Bracket",
+       y = "Loan Grade") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+rm(heatmap_data)
+rm(repayment_rates)
+
+```
+
+
+```{r chi_square_test_grade_vs_loan_status}
+
+# Create a contingency table for Grade and Loan Status
+contingency_table <- table(df_final$grade, df_final$loan_status)
+
+# Perform the Chi-square test
+chi_square_result <- chisq.test(contingency_table)
+
+# Display the results
+cat(sprintf("Chi-square test results: chi2 = %.2f, p-value = %.4f\n", 
+            chi_square_result$statistic, 
+            chi_square_result$p.value))
+
+# Print additional information about degrees of freedom
+cat(sprintf("Degrees of freedom: %d\n", chi_square_result$parameter))
+
+```
+
+
+```{r correlation_grade_vs_loan_status}
+
+# Convert Grade to numeric
+df_final <- df_final %>%
+  mutate(grade_num = case_when(
+    grade == "A" ~ 1,
+    grade == "B" ~ 2,
+    grade == "C" ~ 3,
+    grade == "D" ~ 4,
+    grade == "E" ~ 5,
+    grade == "F" ~ 6,
+    grade == "G" ~ 7
+  ))
+
+# Calculate the correlation between grade_num and loan_status_num
+correlation <- cor(df_final$grade_num, df_final$loan_status_num, use = "complete.obs")
+
+# Display the correlation
+cat(sprintf("Correlation between Grade and Loan Status: %.4f\n", correlation))
+
+```
+
+```{r anova_test_income_across_grades}
+
+# Perform ANOVA to test for income differences across grades
+anova_result <- aov(annual_inc ~ grade, data = df_final)
+
+# Display the ANOVA summary
+anova_summary <- summary(anova_result)
+
+# Print the ANOVA results
+cat("ANOVA test results for income differences across grades:\n")
+cat(sprintf("F-statistic = %.2f, p-value = %.4f\n", 
+            anova_summary[[1]]$`F value`[1], 
+            anova_summary[[1]]$`Pr(>F)`[1]))
+rm(anova_result)
+rm(anova_summary)
+rm(chi_square_result)
+```
+
+#Question 4 and answers go here: (EMMA please paste your code here and complete the report. please let me know if you need any help from me)
+
 
 
 #Conclusion is here. 
