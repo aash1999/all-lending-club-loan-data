@@ -1,0 +1,1180 @@
+---
+title: "Understanding Dataset"
+author: "Singh Sivaram, Aakash"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: hide
+    number_sections: false
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, comment = NA)
+```
+
+```{r init, include=F}
+# include all your packages here
+library(ezids)
+library(data.table)
+source("./HelperFunctions/fetchSubset.R")
+```
+```{r}
+# all file paths
+df_file_path = "../DataSet/filtered_accepted_2013_to_2018Q4.csv"
+
+```
+
+
+## variables
+
+```{r}
+columns_to_target = c("annual_inc", "dti", "fico_range_high", "fico_range_low", "loan_amnt", 
+  "int_rate", "earliest_cr_line", "revol_util", "delinq_2yrs", "pub_rec", 
+  "total_acc", "open_acc", "installment", "home_ownership", 
+  "verification_status", "delinq_amnt", "collections_12_mths_ex_med", 
+  "chargeoff_within_12_mths", "mths_since_last_delinq", "purpose", "sub_grade", "issue_d", "addr_state","inq_last_12m","loan_status","chargeoff_within_12_mths")
+
+
+df <- fetch_subset(df_location = df_file_path, col_names = columns_to_target, nrows = c(1,-1))
+
+```
+
+
+
+```{r}
+convert_to_factors <- function(df) {
+  # Columns to convert to factors based on the provided list
+  factor_cols <- c("home_ownership", "verification_status", 
+                   "loan_status", "purpose", "addr_state","sub_grade")
+  
+  df[] <- lapply(names(df), function(col) {
+    if (col %in% factor_cols) {
+      # Check if the column contains numeric-like values as strings and standardize them
+      if (col == "chargeoff_within_12_mths") {
+        # Convert '0.0' and '0' to '0', and handle similar cases
+        df[[col]] <- as.character(df[[col]])
+        df[[col]][df[[col]] == "0.0"] <- "0"
+        df[[col]][df[[col]] == "1.0"] <- "1"  # If applicable, handle '1.0' similar to '1'
+        return(as.factor(df[[col]]))  # Convert the cleaned column to factor
+      } else {
+        return(as.factor(df[[col]]))  # Convert other factor columns directly
+      }
+    } else if (is.character(df[[col]]) && all(!is.na(as.numeric(df[[col]][-1])))) {
+      return(as.numeric(df[[col]]))  # Convert numeric-like strings to numeric
+    } else {
+      return(df[[col]])  # Leave other columns unchanged
+    }
+  })
+  
+  return(df)
+}
+df <- df[-1,]
+df <- convert_to_factors(df)
+str(df)
+```
+
+
+```{r}
+# Convert specified columns to numeric
+
+df$revol_util <- as.numeric(df$revol_util)
+df$mths_since_last_delinq <- as.numeric(df$mths_since_last_delinq)
+df$dti <- as.numeric(df$dti)
+df$inq_last_12m <- as.numeric(df$inq_last_12m)
+df$chargeoff_within_12_mths <- as.numeric(df$chargeoff_within_12_mths)
+
+# Optional: Check for any warnings about NAs being introduced during coercion
+if (any(is.na(df$revol_util))) {
+  warning("NAs introduced in 'revol_util' during conversion.")
+}
+if (any(is.na(df$mths_since_last_delinq))) {
+  warning("NAs introduced in 'mths_since_last_delinq' during conversion.")
+}
+if (any(is.na(df$dti))) {
+  warning("NAs introduced in 'dti' during conversion.")
+}
+
+```
+```{r}
+str(df)
+```
+
+```{r}
+# Required Libraries
+library(fmsb)
+library(data.table)
+
+# Step 1: Filter DataFrames for loans issued in 2014 and 2017
+df_2014 <- df[issue_d >= "2015-01-01" & issue_d <= "2015-12-31"]
+df_2017 <- df[issue_d >= "2018-01-01" & issue_d <= "2018-12-31"]
+
+# Step 2: Function to remove outliers using IQR
+remove_outliers <- function(df, selected_cols) {
+  for (col in selected_cols) {
+    Q1 <- quantile(df[[col]], 0.25, na.rm = TRUE)
+    Q3 <- quantile(df[[col]], 0.75, na.rm = TRUE)
+    IQR <- Q3 - Q1
+    
+    # Filtering out the outliers
+    df <- df[df[[col]] >= (Q1 - 1.5 * IQR) & df[[col]] <= (Q3 + 1.5 * IQR)]
+  }
+  return(df)
+}
+
+# Step 3: Select the columns of interest for standardization and outlier removal
+selected_columns <- c("int_rate", "annual_inc", "fico_range_low", "fico_range_high", "dti")
+
+# Remove outliers in each group
+df_2014 <- remove_outliers(df_2014, selected_columns)
+df_2017 <- remove_outliers(df_2017, selected_columns)
+
+# Step 4: Function to standardize numeric columns (scaling from 0 to 1)
+standardize_columns <- function(df, selected_cols) {
+  df[, (selected_cols) := lapply(.SD, function(x) (x - min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE) - min(x, na.rm = TRUE))), 
+       .SDcols = selected_cols]
+  return(df)
+}
+
+# Standardize the selected columns in each group
+df_2014 <- standardize_columns(df_2014, selected_columns)
+df_2017 <- standardize_columns(df_2017, selected_columns)
+
+# Step 5: Calculate the medians for selected numeric columns
+medians_2014 <- df_2014[, lapply(.SD, median, na.rm = TRUE), .SDcols = selected_columns]
+medians_2017 <- df_2017[, lapply(.SD, median, na.rm = TRUE), .SDcols = selected_columns]
+
+# Step 6: Combine the medians into a data frame for radar chart
+radar_data_2014_2017 <- rbind(as.data.frame(medians_2014), 
+                               as.data.frame(medians_2017))
+
+# Step 7: Assign appropriate row names for each category
+rownames(radar_data_2014_2017) <- c("2014", "2017")
+
+# Step 8: Add max and min rows for radar chart
+radar_data_2014_2017 <- rbind(max = rep(1, ncol(radar_data_2014_2017)), 
+                               min = rep(0, ncol(radar_data_2014_2017)), 
+                               radar_data_2014_2017)
+
+print(radar_data_2014_2017)
+
+# Set the background color to white
+par(bg = "white")  
+
+# Step 9: Plot the radar chart for 2014 and 2017
+radarchart(radar_data_2014_2017, 
+           axistype = 1,  # Set axis type
+           pcol = c("#1E90FF", "#32CD32"),  # Brighter line colors for 2014 and 2017
+           plty = 1,  # Line type
+           title = "Comparison of Loan Variables (2014 vs. 2017)",
+           cglcol = "lightgrey",  # Lighter grid line color
+           cglty = 1,  # Type of the grid lines
+           caxislabels = seq(0, 1, 0.1),  # Customize axis labels (0 to 1 range)
+           axislabcol = "black",  # Axis label color
+           vlcex = 0.8,  # Text size of labels
+           titlecol = "black",  # Title color
+           cglwd = 0.8)  # Thickness of the grid lines
+
+# Step 10: Add legend to the radar chart
+legend("topright",  # Position of the legend
+       legend = c("2014", "2017"),  # Labels for the legend
+       col = c("#1E90FF", "#32CD32"),  # Corresponding bright colors
+       lty = 1,  # Line type in the legend
+       bty = "n",  # No box around the legend
+       text.col = "black",  # Text color for the legend
+       cex = 0.8)  # Text size of the legend
+rm(df_2014)
+rm(df_2017)
+rm(medians_2014)
+rm(medians_2017)
+
+```
+
+
+
+
+
+
+
+```{r}
+# Count the number of NA values in each column
+na_counts <- sapply(df, function(x) sum(is.na(x)))
+
+# Print the counts of NA values
+print(na_counts)
+
+```
+
+```{r}
+# Load necessary libraries
+library(corrplot)
+setDT(df)  # Converts df to a data.table, if it isn't one already
+
+# Select only numeric columns from the data table
+numeric_df <- df[, .SD, .SDcols = sapply(df, is.numeric)]
+
+# Calculate the correlation matrix
+cor_matrix <- cor(numeric_df, use = "pairwise.complete.obs")
+
+# Set plotting parameters for larger plot size
+# Create a larger plot window
+options(repr.plot.width = 35, repr.plot.height = 45)  # Use this in RMarkdown or Jupyter Notebooks
+
+# Plot the correlation matrix using corrplot without the title
+corrplot(cor_matrix,
+         type = "upper", 
+         method = "circle", 
+         addCoef.col = 0.2,  # Color for coefficients
+         number.cex = 0.1,  # Size of the correlation coefficients
+         tl.cex = 0.6,      # Size of the text labels for variables
+         tl.col = "black",  # Color of the text labels
+         cl.cex = 0.5)      # Size of the color legend text
+
+# Remove numeric_df
+rm(numeric_df)
+
+```
+
+```{r}
+# Load necessary libraries
+library(lubridate)
+library(dplyr)
+library(ggplot2)
+
+# Create a copy of the dataframe
+df1 <- df
+
+# Step 1: Ensure 'issue_d' is in Date format
+df1$issue_d <- as.Date(df1$issue_d, format = "%Y-%m-%d")  # Adjust the format if necessary
+
+# Step 2: Extract year and quarter from 'issue_d'
+df1 <- df1 %>%
+  mutate(year = year(issue_d), 
+         quarter = quarter(issue_d))
+
+# Step 3: Filter out rows with NA values in year or quarter
+df1 <- df1 %>%
+  filter(!is.na(year), !is.na(quarter))
+
+# Step 4: Calculate the total number of loans per quarter
+df_total_per_quarter <- df1 %>%
+  group_by(year, quarter) %>%
+  summarise(total_loans = n(), .groups = 'drop')  # Adding .groups = 'drop' to avoid warnings
+
+# Step 5: Filter for 'Charged Off' loan status
+df_charged_off <- df1 %>%
+  filter(loan_status == "Charged Off")
+
+# Step 6: Aggregate 'Charged Off' counts by year and quarter
+df_charged_off_aggregated <- df_charged_off %>%
+  group_by(year, quarter) %>%
+  summarise(charged_off_count = n(), .groups = 'drop')  # Adding .groups = 'drop' to avoid warnings
+
+# Step 7: Merge the total loan counts with the 'Charged Off' counts
+df_merged <- df_charged_off_aggregated %>%
+  left_join(df_total_per_quarter, by = c("year", "quarter")) %>%
+  mutate(percentage = (charged_off_count / total_loans) * 100)
+
+# Step 8: Create a Year-Quarter variable in the correct format and order
+df_merged <- df_merged %>%
+  mutate(Year_Quarter = paste0(year, ".", quarter)) %>%
+  arrange(year, quarter)  # Arrange the data to ensure it's in the correct order
+
+# Step 9: Convert Year_Quarter into a factor with levels in the correct chronological order
+df_merged$Year_Quarter <- factor(df_merged$Year_Quarter, 
+                                 levels = df_merged$Year_Quarter)
+
+# Step 10: Create the line plot with percentage and display percentage as text on each point
+ggplot(df_merged, aes(x = Year_Quarter, y = percentage, group = 1)) +
+  geom_area(fill = "red", alpha = 0.3) +  # Fill the area under the line with color and adjust opacity
+  geom_line(color = "red", size = 1) +  # Line color and size
+  geom_point(color = "red", size = 2) +  # Point color and size
+  geom_text(aes(label = sprintf("%.1f%%", percentage)), 
+            vjust = -0.5, size = 3, nudge_y = 0.5) +  # Display percentage above points
+  labs(x = "Year-Quarter", y = "Charged Off Percentage", title = "Percentage of Charged Off Loans by Year and Quarter") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),  # Rotate x-axis labels
+        panel.grid.major.y = element_blank(),  # Remove horizontal grid lines
+        panel.grid.minor.y = element_blank())  # Remove minor horizontal grid lines
+
+
+rm(df_charged_off)
+rm(df1)
+rm(df_charged_off_aggregated)
+
+```
+
+
+
+
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(lubridate)
+
+# Ensure you're using the tidyverse for complete functionality
+# Uncomment the following line if you want to load the entire tidyverse
+# library(tidyverse)
+
+# Step 1: Verify and convert 'issue_d' to Date if necessary
+df$issue_d <- as.Date(df$issue_d, format = "%Y-%m-%d")  # Adjust the format if necessary
+
+# Step 2: Filter the dataframe for 'Charged Off' loan_status and remove NaN values
+charged_off_df <- df %>%
+  filter(loan_status == "Charged Off") %>%
+  filter(!is.na(issue_d))  # Ensure we have dates to work with
+
+# Step 3: Create a new column for quarters if not already created
+charged_off_df <- charged_off_df %>%
+  mutate(quarter = quarter(issue_d), 
+         year = year(issue_d),
+         quarter_year = as.integer(format(issue_d, "%Y")) * 10 + ceiling(as.integer(format(issue_d, "%m")) / 3))
+
+# Step 4: Check unique quarters available in the dataset
+unique_quarters <- unique(charged_off_df$quarter_year)
+cat("Unique quarters in the dataset:", unique_quarters, "\n")
+
+# Step 5: Split the data into two groups: before and including Q2 2015, and after Q2 2015
+before_2015_Q2 <- charged_off_df %>%
+  filter(year < 2015 | (year == 2015 & quarter <= 2))
+
+after_2015_Q2 <- charged_off_df %>%
+  filter(year > 2015 | (year == 2015 & quarter > 2))
+
+# Debug: Print sizes of both groups
+cat("Number of records before and including Q2 2015:", nrow(before_2015_Q2), "\n")
+cat("Number of records after Q2 2015:", nrow(after_2015_Q2), "\n")
+
+# Proceed only if there are records in both groups
+if (nrow(before_2015_Q2) > 0 && nrow(after_2015_Q2) > 0) {
+  # Step 6: Identify numerical features in the filtered dataframe
+  numerical_cols <- before_2015_Q2 %>%
+    select_if(is.numeric) %>%
+    colnames()
+
+  # Step 7: Perform T-test for each numeric column, excluding those with zero observations in either group
+  alpha <- 0.05  # Significance level
+  t_test_results <- lapply(numerical_cols, function(col) {
+    # Extract the two groups
+    group1 <- before_2015_Q2[[col]]
+    group2 <- after_2015_Q2[[col]]
+
+    # Check if both groups have enough non-NA observations
+    if (length(na.omit(group1)) > 0 && length(na.omit(group2)) > 0) {
+      # Debug: Print intermediate values
+      cat("\nColumn:", col, "\n")
+      cat("N1:", length(na.omit(group1)), "N2:", length(na.omit(group2)), "\n")
+
+      # Perform the t-test
+      t_test_result <- t.test(group1, group2, var.equal = FALSE)  # Welch's t-test
+
+      # Determine hypothesis status
+      hypothesis_status <- ifelse(t_test_result$p.value <= alpha, "Reject H0", "Fail to Reject H0")
+
+      return(data.frame(Feature = col, T_value = t_test_result$statistic, P_value = t_test_result$p.value, Hypothesis_Status = hypothesis_status))
+    } else {
+      cat("Skipping column:", col, "due to insufficient data in one of the groups.\n")
+      return(NULL)  # Return NULL for insufficient data
+    }
+  })
+
+  # Step 8: Remove NULL results and combine results into a dataframe
+  t_test_results_df <- do.call(rbind, Filter(Negate(is.null), t_test_results))
+  
+  # Step 9: Remove unwanted features
+  t_test_results_filtered <- t_test_results_df %>%
+    filter(!Feature %in% c("quarter", "year", "quarter_year"))
+  
+  # Step 10: Print the filtered results
+  print(t_test_results_filtered)
+
+} else {
+  cat("Not enough records in one of the groups to perform t-tests.\n")
+}
+
+
+
+```
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+library(maps)
+library(ggmap)
+
+# Load the state coordinates
+state_coords <- read.csv("../DataSet/states.csv")
+
+# Step 1: Verify and convert 'issue_d' to Date if necessary
+df$issue_d <- as.Date(df$issue_d, format = "%Y-%m-%d")  # Adjust the format if necessary
+
+# Step 2: Filter the dataframe and remove NaN values
+charged_off_df <- df %>%
+  filter(!is.na(issue_d), !is.na(addr_state))  # Ensure we have dates and states to work with
+
+# Step 3: Create a new column for quarters
+charged_off_df <- charged_off_df %>%
+  mutate(quarter_year = as.integer(format(issue_d, "%Y")) * 10 + ceiling(as.integer(format(issue_d, "%m")) / 3))
+
+# Step 4: Split the data into two groups: before and including Q2 2015, and after Q2 2015
+before_2015_Q2 <- charged_off_df %>%
+  filter(quarter_year <= 20152)
+
+after_2015_Q2 <- charged_off_df %>%
+  filter(quarter_year > 20152)
+
+# Step 5: Calculate total loans and charged off loans by state for both periods
+total_loans_before <- before_2015_Q2 %>%
+  group_by(addr_state) %>%
+  summarise(total_loans = n(), .groups = "drop")
+
+charged_off_loans_before <- before_2015_Q2 %>%
+  filter(loan_status == "Charged Off") %>%
+  group_by(addr_state) %>%
+  summarise(charged_off_loans = n(), .groups = "drop")
+
+total_loans_after <- after_2015_Q2 %>%
+  group_by(addr_state) %>%
+  summarise(total_loans = n(), .groups = "drop")
+
+charged_off_loans_after <- after_2015_Q2 %>%
+  filter(loan_status == "Charged Off") %>%
+  group_by(addr_state) %>%
+  summarise(charged_off_loans = n(), .groups = "drop")
+
+# Step 6: Merge totals and charged off loans for both periods
+frequency_data_before <- total_loans_before %>%
+  left_join(charged_off_loans_before, by = "addr_state") %>%
+  mutate(charged_off_loans = ifelse(is.na(charged_off_loans), 0, charged_off_loans),
+         percentage_charged_off = (charged_off_loans / total_loans) * 100)
+
+frequency_data_after <- total_loans_after %>%
+  left_join(charged_off_loans_after, by = "addr_state") %>%
+  mutate(charged_off_loans = ifelse(is.na(charged_off_loans), 0, charged_off_loans),
+         percentage_charged_off = (charged_off_loans / total_loans) * 100)
+
+# Step 7: Merge both frequency data with state coordinates
+frequency_data <- state_coords %>%
+  left_join(frequency_data_before %>% select(addr_state, percentage_charged_off) %>% rename(percentage_charged_off_before = percentage_charged_off), 
+            by = c("state" = "addr_state")) %>%
+  left_join(frequency_data_after %>% select(addr_state, percentage_charged_off) %>% rename(percentage_charged_off_after = percentage_charged_off), 
+            by = c("state" = "addr_state"))
+
+# Verify frequency data
+print(frequency_data)
+
+# Step 8: Filter to keep only points within the contiguous US
+frequency_data <- frequency_data %>%
+  filter(latitude >= 24.396308 & latitude <= 49.384358 & 
+         longitude >= -125.0 & longitude <= -66.93457)
+
+# Step 9: Create the map
+us_map <- map_data("state")
+
+# Step 10: Plot
+# Step 10: Plot
+ggplot() +
+  geom_polygon(data = us_map, aes(x = long, y = lat, group = group), fill = "lightgrey") +
+  geom_point(data = frequency_data, aes(x = longitude, y = latitude, size = percentage_charged_off_before), color = "red", alpha = 0.5) +
+  geom_point(data = frequency_data, aes(x = longitude, y = latitude, size = percentage_charged_off_after), color = "green", alpha = 0.5) +
+  scale_size_continuous(
+    breaks = seq(0, 50, 0.1),
+    range = c(5, 25),  # Adjust the range of sizes
+    name = "Percentage of Charged Off Loans",
+    guide = "none"
+  ) +
+  labs(title = "Percentage of Charged Off Loans by State (Before and After Q2 2015)",
+       x = "Longitude",
+       y = "Latitude") +
+  theme_minimal()
+
+library(ggplot2)
+
+
+
+# Step 10: Plot with state symbols
+ggplot() +
+  # Base map
+  geom_polygon(data = us_map, aes(x = long, y = lat, group = group), fill = "lightgrey") +
+  
+  # Points for charged off loans before Q2 2015
+  geom_point(data = frequency_data, 
+             aes(x = longitude, y = latitude, 
+                 size = percentage_charged_off_before, 
+                 color = "Before Q2 2015"), 
+             alpha = 0.5) +
+  
+  # Points for charged off loans after Q2 2015
+  geom_point(data = frequency_data, 
+             aes(x = longitude, y = latitude, 
+                 size = percentage_charged_off_after, 
+                 color = "After Q2 2015"), 
+             alpha = 0.5) +
+  
+  # Add state abbreviations
+  geom_text(data = frequency_data, aes(x = longitude, y = latitude, label = state), 
+            color = "black", size = 3, vjust = -0.8) +  # Adjust text size and position
+  
+  # Adjust the size scale
+  scale_size_continuous(
+    range = c(3, 10),  # Adjusting the size range
+    name = "Percentage of Charged Off Loans"
+  ) +
+  
+  # Define color scale
+  scale_color_manual(values = c("Before Q2 2015" = "red", "After Q2 2015" = "green"),
+                     name = "Time Period") +
+  
+  # Labels and title
+  labs(title = "Percentage of Charged Off Loans by State (Before and After Q2 2015)",
+       x = "Longitude",
+       y = "Latitude") +
+  
+  theme_minimal() +
+  theme(legend.position = "top")  # Place legend at the top
+
+rm(after_2015_Q2)
+rm(before_2015_Q2)
+rm(charged_off_df)
+rm(charged_off_loans_after)
+rm(charged_off_loans_before)
+rm(us_map)
+
+
+
+```
+
+```{r}
+# Filter the data for only the relevant loan statuses and home ownership categories
+df_filtered <- df %>%
+  filter(loan_status %in% c("Charged Off", "Fully Paid", "Current") &
+         home_ownership %in% c("MORTGAGE", "OWN", "RENT"))
+
+# Create a contingency table
+contingency_table <- table(df_filtered$loan_status, df_filtered$home_ownership)
+
+# Remove rows and columns with only zero counts
+contingency_table_filtered <- contingency_table[
+  rowSums(contingency_table) > 0, 
+  colSums(contingency_table) > 0
+]
+
+# View the filtered contingency table
+print(contingency_table_filtered)
+
+# Perform chi-squared test on the filtered table
+chi_sq_result <- chisq.test(contingency_table_filtered)
+
+# View the results of the chi-squared test
+print(chi_sq_result)
+
+expected_counts <- chisq.test(contingency_table_filtered)$expected
+print(expected_counts)
+
+
+
+
+```
+
+
+
+
+
+---
+title: "Chi-Square Test for Home Ownership and Loan Status"
+author: "Your Name"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+## Hypotheses
+
+- **Null Hypothesis (H₀):** Home ownership status does not affect loan status.
+- **Alternative Hypothesis (H₁):** Home ownership status does affect loan status.
+
+## Observed vs. Expected Counts
+
+### Observed counts (from contingency table):
+
+- **MORTGAGE:**
+  - Charged Off: 107,903
+  - Current: 429,307
+  - Fully Paid: 511,353
+
+- **OWN:**
+  - Charged Off: 28,636
+  - Current: 103,842
+  - Fully Paid: 108,460
+
+- **RENT:**
+  - Charged Off: 116,600
+  - Current: 344,481
+  - Fully Paid: 372,044
+
+### Expected counts (based on the chi-squared test):
+
+- **MORTGAGE:**
+  - Charged Off: 125,049
+  - Current: 433,543.3
+  - Fully Paid: 489,970.7
+
+- **OWN:**
+  - Charged Off: 28,733.66
+  - Current: 99,619.25
+  - Fully Paid: 112,585.09
+
+- **RENT:**
+  - Charged Off: 99,356.38
+  - Current: 344,467.42
+  - Fully Paid: 389,301.21
+
+## Chi-Square Test Results
+
+- **Chi-Square Statistic (X-squared):** 7413.6
+- **Degrees of freedom (df):** 4
+- **p-value:** < 2.2e-16
+
+## Conclusion
+
+Since the **p-value** is extremely small (**< 2.2e-16**), much smaller than the typical significance level of 0.05, we **reject the null hypothesis (H₀)**.
+
+## Result
+
+There is a **significant association** between **home ownership status** and **loan status**. This means that home ownership affects the likelihood of whether a loan is charged off, fully paid, or current.
+
+
+
+```{r}
+
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+library(lubridate)
+
+df1 <- df
+# Ensure issue_d is in Date format
+df1$issue_d <- as.Date(df1$issue_d, format = "%b-%Y")
+
+# Filter out rows where issue_d is NA
+df1 <- df1 %>%
+  filter(!is.na(issue_d))
+
+# Extract year and quarter from issue_d
+df1$quarter <- paste0("Q", quarter(df1$issue_d), " ", year(df1$issue_d))
+
+# Filter the data for only "Charged Off" and "Fully Paid" loan statuses
+df_filtered <- df1 %>%
+  filter(loan_status %in% c("Charged Off", "Fully Paid"))
+
+# Define a function to remove outliers based on IQR
+remove_outliers <- function(data) {
+  Q1 <- quantile(data$dti, 0.25, na.rm = TRUE)
+  Q3 <- quantile(data$dti, 0.75, na.rm = TRUE)
+  IQR <- Q3 - Q1
+  lower_bound <- Q1 - 1.5 * IQR
+  upper_bound <- Q3 + 1.5 * IQR
+  data %>%
+    filter(dti >= lower_bound & dti <= upper_bound)
+}
+
+# Remove outliers by applying the function to each quarter and loan_status group
+df_no_outliers <- df_filtered %>%
+  group_by(quarter, loan_status) %>%
+  do(remove_outliers(.))
+
+# Ensure proper order of quarters
+df_no_outliers$quarter <- factor(df_no_outliers$quarter, 
+                                 levels = unique(df_no_outliers$quarter[order(df_no_outliers$issue_d)]))
+
+# Plot box plot for dti for each quarter with loan_status distinction (without outliers)
+ggplot(df_no_outliers, aes(x = quarter, y = dti, fill = loan_status)) +
+  geom_boxplot() +
+  labs(title = "DTI Box Plot by Quarter for Charged Off and Fully Paid Loans (Outliers Removed)",
+       x = "Quarter",
+       y = "DTI",
+       fill = "Loan Status") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for readability
+rm(df_filtered)
+rm(df1)
+
+
+```
+
+
+```{r}
+col_names = c("Debt-To-Income Ratio", "Risk_Score","Application Date")
+dfr <- fetch_subset(df_location = "../DataSet/filtered_rejected_2013_to_2018Q.csv", col_names = col_names, nrows = c(1,-1))
+
+
+```
+```{r}
+library(dplyr)
+library(ggplot2)
+set.seed(1)  # For reproducibility
+dfr <- dfr %>% sample_frac(0.25)
+```
+
+```{r}
+rm(df)
+```
+
+```{r}
+
+str(dfr)
+
+```
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+# Clone the original dataframe
+dfr1 <- dfr
+
+# Convert Application Date to Date format if not already done
+dfr1$Application_Date <- as.Date(dfr1$'Application Date')
+
+# Convert Risk_Score to numeric, handling NAs
+dfr1$Risk_Score <- as.numeric(dfr1$Risk_Score)
+
+# Convert Debt-To-Income Ratio to numeric by removing "%" and converting to decimal
+dfr1$Debt_To_Income_Ratio <- as.numeric(gsub("%", "", dfr1$`Debt-To-Income Ratio`)) / 100
+
+# Filter for application dates before and after 2015
+dfr_before_2015 <- dfr1 %>% filter(Application_Date < as.Date("2015-01-01"))
+dfr_after_2015 <- dfr1 %>% filter(Application_Date >= as.Date("2015-01-01"))
+
+# Define outlier removal function using IQR
+remove_outliers <- function(data) {
+  # Calculate Q1, Q3, and IQR for Risk_Score
+  Q1_risk <- quantile(data$Risk_Score, 0.25, na.rm = TRUE)
+  Q3_risk <- quantile(data$Risk_Score, 0.75, na.rm = TRUE)
+  IQR_risk <- IQR(data$Risk_Score, na.rm = TRUE)
+  
+  # Calculate Q1, Q3, and IQR for Debt_To_Income_Ratio
+  Q1_dti <- quantile(data$Debt_To_Income_Ratio, 0.25, na.rm = TRUE)
+  Q3_dti <- quantile(data$Debt_To_Income_Ratio, 0.75, na.rm = TRUE)
+  IQR_dti <- IQR(data$Debt_To_Income_Ratio, na.rm = TRUE)
+
+  # Filter data to remove outliers
+  data_filtered <- data %>%
+    filter(
+      Risk_Score >= (Q1_risk - 1.5 * IQR_risk) & Risk_Score <= (Q3_risk + 1.5 * IQR_risk) &
+      Debt_To_Income_Ratio >= (Q1_dti - 1.5 * IQR_dti) & Debt_To_Income_Ratio <= (Q3_dti + 1.5 * IQR_dti)
+    )
+  
+  return(data_filtered)
+}
+
+# Remove outliers from both datasets
+dfr_before_2015_clean <- remove_outliers(dfr_before_2015)
+dfr_after_2015_clean <- remove_outliers(dfr_after_2015)
+
+# Reuse the same bin width for the 2D histograms
+bins <- 40 # Set the number of bins, adjust as necessary
+
+# Create a 2D histogram for applications before 2015
+ggplot(dfr_before_2015_clean, aes(x = Risk_Score, y = Debt_To_Income_Ratio)) +
+  geom_bin2d(bins = bins) +
+  labs(title = "2D Histogram of Risk Score vs Debt-To-Income Ratio (Before 2015)",
+       x = "Risk Score",
+       y = "Debt-To-Income Ratio") +
+  theme_minimal()
+
+# Create a 2D histogram for applications after 2015
+ggplot(dfr_after_2015_clean, aes(x = Risk_Score, y = Debt_To_Income_Ratio)) +
+  geom_bin2d(bins = bins) +
+  labs(title = "2D Histogram of Risk Score vs Debt-To-Income Ratio (After 2015)",
+       x = "Risk Score",
+       y = "Debt-To-Income Ratio") +
+  theme_minimal()
+
+# Clean up
+rm(dfr_before_2015)
+rm(dfr_after_2015)
+rm(dfr1)
+rm(dfr_before_2015_clean)
+rm(dfr_after_2015_clean)
+
+```
+
+
+
+
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+# Clone the original dataframe
+dfr1 <- dfr
+
+# Convert Application Date to Date format if not already done
+dfr1$Application_Date <- as.Date(dfr1$'Application Date')
+
+# Convert Risk_Score to numeric, handling NAs
+dfr1$Risk_Score <- as.numeric(dfr1$Risk_Score)
+
+# Convert Debt-To-Income Ratio to numeric by removing "%" and converting to decimal
+dfr1$Debt_To_Income_Ratio <- as.numeric(gsub("%", "", dfr1$`Debt-To-Income Ratio`)) / 100
+
+# Filter for application dates before and after 2015
+dfr_before_2015 <- dfr1 %>% filter(Application_Date < as.Date("2015-01-01"))
+dfr_after_2015 <- dfr1 %>% filter(Application_Date >= as.Date("2015-01-01"))
+
+# Define outlier removal function using IQR
+remove_outliers <- function(data) {
+  # Calculate Q1, Q3, and IQR for Risk_Score
+  Q1_risk <- quantile(data$Risk_Score, 0.25, na.rm = TRUE)
+  Q3_risk <- quantile(data$Risk_Score, 0.75, na.rm = TRUE)
+  IQR_risk <- IQR(data$Risk_Score, na.rm = TRUE)
+  
+  # Calculate Q1, Q3, and IQR for Debt_To_Income_Ratio
+  Q1_dti <- quantile(data$Debt_To_Income_Ratio, 0.25, na.rm = TRUE)
+  Q3_dti <- quantile(data$Debt_To_Income_Ratio, 0.75, na.rm = TRUE)
+  IQR_dti <- IQR(data$Debt_To_Income_Ratio, na.rm = TRUE)
+
+  # Filter data to remove outliers
+  data_filtered <- data %>%
+    filter(
+      Risk_Score >= (Q1_risk - 1.5 * IQR_risk) & Risk_Score <= (Q3_risk + 1.5 * IQR_risk) &
+      Debt_To_Income_Ratio >= (Q1_dti - 1.5 * IQR_dti) & Debt_To_Income_Ratio <= (Q3_dti + 1.5 * IQR_dti)
+    )
+  
+  return(data_filtered)
+}
+
+# Remove outliers from both datasets
+dfr_before_2015_clean <- remove_outliers(dfr_before_2015)
+dfr_after_2015_clean <- remove_outliers(dfr_after_2015)
+
+# Create a contour plot for applications before 2015
+ggplot(dfr_before_2015_clean, aes(x = Risk_Score, y = Debt_To_Income_Ratio)) +
+  geom_density_2d() +
+  labs(title = "Contour Plot of Risk Score vs Debt-To-Income Ratio (Before 2015)",
+       x = "Risk Score",
+       y = "Debt-To-Income Ratio") +
+  theme_minimal()
+
+# Create a contour plot for applications after 2015
+ggplot(dfr_after_2015_clean, aes(x = Risk_Score, y = Debt_To_Income_Ratio)) +
+  geom_density_2d() +
+  labs(title = "Contour Plot of Risk Score vs Debt-To-Income Ratio (After 2015)",
+       x = "Risk Score",
+       y = "Debt-To-Income Ratio") +
+  theme_minimal()
+
+# Clean up
+rm(dfr_before_2015)
+rm(dfr_after_2015)
+rm(dfr1)
+rm(dfr_before_2015_clean)
+rm(dfr_after_2015_clean)
+
+```
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+# Clone the original dataframe
+dfr1 <- dfr
+
+# Convert Application Date to Date format if not already done
+dfr1$Application_Date <- as.Date(dfr1$'Application Date')
+
+# Convert Risk_Score to numeric, handling NAs
+dfr1$Risk_Score <- as.numeric(dfr1$Risk_Score)
+
+# Convert Debt-To-Income Ratio to numeric by removing "%" and converting to decimal
+dfr1$Debt_To_Income_Ratio <- as.numeric(gsub("%", "", dfr1$`Debt-To-Income Ratio`)) / 100
+
+# Filter for application dates before and after 2015
+dfr_before_2015 <- dfr1 %>% filter(Application_Date < as.Date("2015-01-01"))
+dfr_after_2015 <- dfr1 %>% filter(Application_Date >= as.Date("2015-01-01"))
+
+# Define outlier removal function using IQR
+remove_outliers <- function(data) {
+  # Calculate Q1, Q3, and IQR for Risk_Score
+  Q1_risk <- quantile(data$Risk_Score, 0.25, na.rm = TRUE)
+  Q3_risk <- quantile(data$Risk_Score, 0.75, na.rm = TRUE)
+  IQR_risk <- IQR(data$Risk_Score, na.rm = TRUE)
+  
+  # Calculate Q1, Q3, and IQR for Debt_To_Income_Ratio
+  Q1_dti <- quantile(data$Debt_To_Income_Ratio, 0.25, na.rm = TRUE)
+  Q3_dti <- quantile(data$Debt_To_Income_Ratio, 0.75, na.rm = TRUE)
+  IQR_dti <- IQR(data$Debt_To_Income_Ratio, na.rm = TRUE)
+
+  # Filter data to remove outliers
+  data_filtered <- data %>%
+    filter(
+      Risk_Score >= (Q1_risk - 1.5 * IQR_risk) & Risk_Score <= (Q3_risk + 1.5 * IQR_risk) &
+      Debt_To_Income_Ratio >= (Q1_dti - 1.5 * IQR_dti) & Debt_To_Income_Ratio <= (Q3_dti + 1.5 * IQR_dti)
+    )
+  
+  return(data_filtered)
+}
+
+# Remove outliers from both datasets
+dfr_before_2015_clean <- remove_outliers(dfr_before_2015)
+dfr_after_2015_clean <- remove_outliers(dfr_after_2015)
+
+# Combine the datasets for plotting
+dfr_combined <- bind_rows(
+  dfr_before_2015_clean %>% mutate(Period = "Before 2015"),
+  dfr_after_2015_clean %>% mutate(Period = "After 2015")
+)
+
+# Create a combined contour plot
+ggplot(dfr_combined, aes(x = Risk_Score, y = Debt_To_Income_Ratio, color = Period)) +
+  geom_density_2d() +
+  labs(title = "Contour Plot of Risk Score vs Debt-To-Income Ratio",
+       x = "Risk Score",
+       y = "Debt-To-Income Ratio") +
+  scale_color_manual(values = c("Before 2015" = "blue", "After 2015" = "red")) +
+  theme_minimal() +
+  theme(legend.title = element_blank())
+
+# Clean up
+rm(dfr_before_2015)
+rm(dfr_after_2015)
+rm(dfr1)
+rm(dfr_before_2015_clean)
+rm(dfr_after_2015_clean)
+
+```
+```{r}
+# Create a combined contour plot with filled contours
+ggplot(dfr_combined, aes(x = Risk_Score, y = Debt_To_Income_Ratio, fill = Period)) +
+  geom_density_2d_filled() +
+  labs(title = "Contour Plot of Risk Score vs Debt-To-Income Ratio",
+       x = "Risk Score",
+       y = "Debt-To-Income Ratio") +
+  scale_fill_manual(values = c("Before 2015" = "blue", "After 2015" = "red")) +
+  theme_minimal() +
+  theme(legend.title = element_blank()) +
+  scale_color_manual(values = c("Before 2015" = "blue", "After 2015" = "red"))
+
+# Clean up
+rm(dfr_before_2015)
+rm(dfr_after_2015)
+rm(dfr1)
+rm(dfr_before_2015_clean)
+rm(dfr_after_2015_clean)
+
+```
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+dfr1 <- dfr
+
+# Ensure the Debt-To-Income Ratio is numeric
+dfr1$dti <- as.numeric(gsub("%", "", dfr1$`Debt-To-Income Ratio`))  # Remove '%' and convert to numeric
+
+# Ensure the Application Date is in Date format
+dfr1$`Application Date` <- as.Date(dfr1$`Application Date`, format = "%Y-%m-%d")
+
+# Remove NA values (if any) in Debt-To-Income Ratio and Application Date
+dfr1 <- dfr1 %>% filter(!is.na(dti) & !is.na(`Application Date`))
+
+# Define a function to remove outliers based on IQR
+remove_outliers <- function(data) {
+  Q1 <- quantile(data$dti, 0.25, na.rm = TRUE)  # 1st quartile (25th percentile)
+  Q3 <- quantile(data$dti, 0.75, na.rm = TRUE)  # 3rd quartile (75th percentile)
+  IQR <- Q3 - Q1  # Interquartile range
+  lower_bound <- Q1 - 1.5 * IQR
+  upper_bound <- Q3 + 1.5 * IQR
+  data %>%
+    filter(dti >= lower_bound & dti <= upper_bound)  # Remove outliers
+}
+
+# Apply the function to remove outliers
+dfr_no_outliers <- remove_outliers(dfr1)
+
+# Split the data into before and after 2015
+dfr_before_2015 <- dfr_no_outliers %>% filter(`Application Date` < as.Date("2015-01-01"))
+dfr_after_2015 <- dfr_no_outliers %>% filter(`Application Date` >= as.Date("2015-01-01"))
+
+# Create the frequency distribution plot using ggplot
+ggplot() +
+  geom_histogram(data = dfr_before_2015, aes(x = dti, y = ..count.., color = "Before 2015", fill = "Before 2015"), 
+                 binwidth = 1, alpha = 0.4, position = "identity") +
+  geom_histogram(data = dfr_after_2015, aes(x = dti, y = ..count.., color = "After 2015", fill = "After 2015"), 
+                 binwidth = 1, alpha = 0.4, position = "identity") +
+  labs(title = "Frequency Distribution of Debt-To-Income Ratio (Approved Loans)",
+       x = "Debt-To-Income Ratio (%)",
+       y = "Frequency",
+       color = "Period",
+       fill = "Period") +
+  theme_minimal() +
+  scale_color_manual(values = c("Before 2015" = "blue", "After 2015" = "red")) +
+  scale_fill_manual(values = c("Before 2015" = "blue", "After 2015" = "red")) +
+  theme(legend.position = "top")
+
+# Optional: Clean up memory
+rm(dfr1)
+rm(dfr_no_outliers)
+rm(dfr_before_2015)
+rm(dfr_after_2015)
+rm(df_no_outliers)
+
+
+```
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+dfr1 <- df
+
+# Ensure the Debt-To-Income Ratio is numeric
+
+
+# Ensure the Application Date is in Date format
+dfr1$issue_d <- as.Date(dfr1$issue_d, format = "%Y-%m-%d")
+
+# Remove NA values (if any) in Debt-To-Income Ratio and Application Date
+dfr1 <- dfr1 %>% filter(!is.na(dti) & !is.na(issue_d))
+
+# Define a function to remove outliers based on IQR
+remove_outliers <- function(data) {
+  Q1 <- quantile(data$dti, 0.25, na.rm = TRUE)  # 1st quartile (25th percentile)
+  Q3 <- quantile(data$dti, 0.75, na.rm = TRUE)  # 3rd quartile (75th percentile)
+  IQR <- Q3 - Q1  # Interquartile range
+  lower_bound <- Q1 - 1.5 * IQR
+  upper_bound <- Q3 + 1.5 * IQR
+  data %>%
+    filter(dti >= lower_bound & dti <= upper_bound)  # Remove outliers
+}
+
+# Apply the function to remove outliers
+dfr_no_outliers <- remove_outliers(dfr1)
+
+# Split the data into before and after 2015
+dfr_before_2015 <- dfr_no_outliers %>% filter(issue_d < as.Date("2015-01-01"))
+dfr_after_2015 <- dfr_no_outliers %>% filter(issue_d >= as.Date("2015-01-01"))
+
+# Create the frequency distribution plot using ggplot
+ggplot() +
+  geom_histogram(data = dfr_before_2015, aes(x = dti, y = ..count.., color = "Before 2015", fill = "Before 2015"), 
+                 binwidth = 1, alpha = 0.4, position = "identity") +
+  geom_histogram(data = dfr_after_2015, aes(x = dti, y = ..count.., color = "After 2015", fill = "After 2015"), 
+                 binwidth = 1, alpha = 0.4, position = "identity") +
+  labs(title = "Frequency Distribution of Debt-To-Income Ratio (Before and After 2015)",
+       x = "Debt-To-Income Ratio (%)",
+       y = "Frequency",
+       color = "Period",
+       fill = "Period") +
+  theme_minimal() +
+  scale_color_manual(values = c("Before 2015" = "blue", "After 2015" = "red")) +
+  scale_fill_manual(values = c("Before 2015" = "blue", "After 2015" = "red")) +
+  theme(legend.position = "top")
+
+# Optional: Clean up memory
+rm(dfr1)
+rm(dfr_no_outliers)
+rm(dfr_before_2015)
+rm(dfr_after_2015)
+
+```
+
+```{r}
+
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+dfr1 <- dfr
+
+# Ensure the Debt-To-Income Ratio is numeric
+dfr1$dti <- as.numeric(gsub("%", "", dfr1$`Risk_Score`))  # Remove '%' and convert to numeric
+
+# Ensure the Application Date is in Date format
+dfr1$`Application Date` <- as.Date(dfr1$`Application Date`, format = "%Y-%m-%d")
+
+# Remove NA values (if any) in Debt-To-Income Ratio and Application Date
+dfr1 <- dfr1 %>% filter(!is.na(dti) & !is.na(`Application Date`))
+
+# Define a function to remove outliers based on IQR
+remove_outliers <- function(data) {
+  Q1 <- quantile(data$dti, 0.25, na.rm = TRUE)  # 1st quartile (25th percentile)
+  Q3 <- quantile(data$dti, 0.75, na.rm = TRUE)  # 3rd quartile (75th percentile)
+  IQR <- Q3 - Q1  # Interquartile range
+  lower_bound <- Q1 - 1.5 * IQR
+  upper_bound <- Q3 + 1.5 * IQR
+  data %>%
+    filter(dti >= lower_bound & dti <= upper_bound)  # Remove outliers
+}
+
+# Apply the function to remove outliers
+dfr_no_outliers <- remove_outliers(dfr1)
+
+# Split the data into before and after 2015
+dfr_before_2015 <- dfr_no_outliers %>% filter(`Application Date` < as.Date("2015-01-01"))
+dfr_after_2015 <- dfr_no_outliers %>% filter(`Application Date` >= as.Date("2015-01-01"))
+
+# Create the line distribution plot using ggplot
+ggplot() +
+  geom_density(data = dfr_before_2015, aes(x = dti, color = "Before 2015"), size = 1.2) +
+  geom_density(data = dfr_after_2015, aes(x = dti, color = "After 2015"), size = 1.2) +
+  labs(title = "Density Plot of Risk Score (Before and After 2015)",
+       x = "Risk Score",
+       y = "Density",
+       color = "Period") +
+  theme_minimal() +
+  scale_color_manual(values = c("Before 2015" = "blue", "After 2015" = "red"))
+
+rm(dfr1)
+rm(dfr_no_outliers)
+rm(dfr_before_2015)
+rm(dfr_after_2015)
+
+
+```
+```{r}
+dfr1 <- dfr
+
+# Step 1: Convert Risk_Score to numeric
+dfr1$Risk_Score <- as.numeric(dfr1$Risk_Score)
+
+# Step 2: Remove percentage sign from Debt-To-Income Ratio and convert to numeric
+dfr1$Debt.To.Income.Ratio <- as.numeric(sub("%", "", dfr1$Debt.To.Income.Ratio))
+
+# Step 3: Create a new column to classify application dates
+dfr1 <- dfr1 %>%
+  mutate(Application_Period = ifelse(Application.Date < as.IDate("2015-01-01"), "Before 2015", "After 2015")) %>%
+  filter(!is.na(Risk_Score), !is.na(Debt.To.Income.Ratio))  # Filter out NAs for plotting
+
+
+# Step 4: Create the scatter plot
+ggplot(dfr1, aes(x = Debt.To.Income.Ratio, y = Risk_Score, color = Application_Period)) +
+  geom_point(size = 3, alpha = 0.7) +
+  scale_color_manual(values = c("Before 2015" = "red", "After 2015" = "green")) +
+  labs(title = "Risk Score vs Debt-To-Income Ratio",
+       x = "Debt-To-Income Ratio (%)",
+       y = "Risk Score") +
+  theme_minimal() +
+  theme(legend.title = element_blank())
+# Clean up environment (if needed)
+rm(dfr1)
+
+
+
+
+
+```
+
+

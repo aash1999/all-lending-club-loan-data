@@ -1,5 +1,10 @@
 *.csv
 *.DS_Store
 .Rproj.user
-starter.html
 all-lending-club-loan-data.Rproj
+.Rhistory
+*.twbr
+*.twb
+*.RData
+*.RDataTmp
+*.RDataTmp1

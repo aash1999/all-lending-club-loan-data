@@ -1,0 +1,47 @@
+---
+title: "Project one: Lending Club Data Analysis"
+author: "Uyemaa, Aakash, Melissa, Ayush"
+date: "10/15/2024"
+output:
+  html_document:
+    code_folding: show
+    number_sections: false
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+---
+
+### Setup chunk: Load libraries and set global options
+```{r}
+knitr::opts_chunk$set(echo = TRUE, include = TRUE)
+library(knitr)
+library(dplyr)
+library(ggplot2)
+```
+
+### Load the accepted and rejected loans dataset
+```{r}
+accepted_loans <- read.csv("C:\\Users\\uemaa\\Documents\\Data Science\\Project 1\\cleaned_accepted_2013_to_2018Q4.csv")
+rejected_loans <- read.csv(C:\Users\uemaa\Documents\Data Science\Project 1\cleaned_rejected_2013_to_2018Q4.csv)
+```
+
+### Display column names of accepted loans dataset
+```{r}
+colnames(accepted_loans)
+colnames(rejected_loans)
+```
+
+### Structure of accepted  loans dataset
+
+```{r}
+str(accepted_loans)
+```
+
+### Structure of rejected loans dataset
+
+```{r}
+str(rejected_loans)
+```

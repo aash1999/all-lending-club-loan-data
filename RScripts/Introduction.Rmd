@@ -57,3 +57,16 @@ Since 2006, LendingClub has been a U.S. financial services company that has faci
 9. Employment Length: The amount in years the customer has been employed. 
 
 
+#Question 1 and answers go here:
+
+#Question 2 and answers go here:
+
+#Question 3 and answers go here:
+
+#Question 4 and answers go here:
+
+
+#Conclusion is here. 
+
+
+
