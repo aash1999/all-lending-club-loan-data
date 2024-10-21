@@ -1587,12 +1587,14 @@ accepted loans will be fully repaid. To accomplish this, we will ask the
 following SMART questions:</p>
 <ol style="list-style-type: decimal">
 <li><p>How do the loan features of term, amount, and interest rate
-influence the likelihood of a loan being charged off (lender has
-accepted the loan as unlikely to recover) versus being fully
+individually influence the likelihood of a loan being charged off
+(lender has accepted the loan as unlikely to recover) versus being fully
 paid?</p></li>
-<li><p>How do the borrower characteristics of income, credit score, and
-application type influence/predict the likelihood of loan defaulting or
-being fully paid, based on historical data?</p></li>
+<li><p>How do variables such as dti, annual_inc, int_rate, and
+fico_range impact the likelihood of a loan being “fully paid” or
+“charged off” year over year from 2014 to 2016? What trends can be
+identified in the data, and how do these variables differ between the
+two loan statuses over time?</p></li>
 <li><p>Do the loan grades provided to each customer correlate to their
 loan repayment behavior based on income and loan status?</p></li>
 <li><p>Is there a relationship between employment length and the amount
@@ -1615,6 +1617,17 @@ the borrower still owes.</p></li>
 60 Months).</p></li>
 <li><p>Interest Rate: The percentage of the loan amount that the lender
 charges the borrower for borrowing money.</p></li>
+<li><p>DTI (Debt to Income Ratio): A measure used to evaluate a
+borrower’s financial situation by comparing their debt payments to their
+gross monthly income.</p></li>
+<li><p>Annual Income: The dollar amount the customer earns on a yearly
+basis.</p></li>
+<li><p>FICO Range: A measure of creditworthiness used by lenders to
+assess a borrower’s ability to repay a loan.</p></li>
+<li><p>Loan Grades: Classifies the risk level of a loan from A (less
+risky) to G (risky).</p></li>
+<li><p>Employment Length: The amount in years the customer has been
+employed.</p></li>
 </ol>
 </div>
 

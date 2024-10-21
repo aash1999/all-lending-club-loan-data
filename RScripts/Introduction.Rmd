@@ -28,9 +28,9 @@ options(scientific=T, digits = 3)
 Since 2006, LendingClub has been a U.S. financial services company that has facilitated loan contracts. Our research will focus on LendingClub's loan data that consist of approved and rejected loans between 2013-2018. To understand LendingClub’s clientele, we will analyze borrower and loan characteristics to assess risk levels, determine loan acceptance, and understand what factors influence whether accepted loans will be fully repaid. To accomplish this, we will ask the following SMART questions:
 
 
-1. How do the loan features of term, amount, and interest rate influence the likelihood of a loan being charged off (lender has accepted the loan as unlikely to recover) versus being fully paid? 
+1. How do the loan features of term, amount, and interest rate individually influence the likelihood of a loan being charged off (lender has accepted the loan as unlikely to recover) versus being fully paid? 
 
-2. How do the borrower characteristics of income, credit score, and application type influence/predict the likelihood of loan defaulting or being fully paid, based on historical data? 
+2. How do variables such as dti, annual_inc, int_rate, and fico_range impact the likelihood of a loan being "fully paid" or "charged off" year over year from 2014 to 2016? What trends can be identified in the data, and how do these variables differ between the two loan statuses over time?
 
 3. Do the loan grades provided to each customer correlate to their loan repayment behavior based on income and loan status? 
 
@@ -46,6 +46,17 @@ Since 2006, LendingClub has been a U.S. financial services company that has faci
 
 4. Interest Rate: The percentage of the loan amount that the lender charges the borrower for borrowing money. 
 
+5. DTI (Debt to Income Ratio): A measure used to evaluate a borrower's financial situation by comparing their debt payments to their gross monthly income. 
+
+6. Annual Income: The dollar amount the customer earns on a yearly basis. 
+
+7. FICO Range: A measure of creditworthiness used by lenders to assess a borrower's ability to repay a loan. 
+
+8. Loan Grades: Classifies the risk level of a loan from A (less risky) to G (risky). 
+
+9. Employment Length: The amount in years the customer has been employed. 
+
+
 #Question 1 and answers go here:
 
 #Question 2 and answers go here:
@@ -56,7 +67,6 @@ Since 2006, LendingClub has been a U.S. financial services company that has faci
 
 
 #Conclusion is here. 
-
 
 
 
