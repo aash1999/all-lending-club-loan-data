@@ -1,0 +1,141 @@
+---
+title: "Project one: Lending Club Data Analysis"
+author: "Uyemaa, Aakash, Melissa, Ayush"
+date: "10/15/2024"
+output:
+  html_document: 
+    code_folding: show
+    toc: true
+    toc_float: true
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+---
+
+### Setup chunk: Load libraries and set global options
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE, include = TRUE)
+library(knitr)
+library(dplyr)
+library(ggplot2)
+library(kableExtra)
+
+```
+
+### Load the accepted and rejected loans dataset
+
+```{r}
+accepted_loans <- read.csv("C:\\Users\\uemaa\\Documents\\Data Science\\Project 1\\cleaned_accepted_2013_to_2018Q4.csv")
+rejected_loans <- read.csv("C:\\Users\\uemaa\\Documents\\Data Science\\Project 1\\cleaned_rejected_2013_to_2018Q4.csv")
+```
+
+### Display column names of accepted loans dataset
+
+```{r}
+colnames(accepted_loans)
+colnames(rejected_loans)
+```
+
+### Structure of accepted loans dataset
+
+```{r}
+str(accepted_loans)
+```
+
+### Structure of rejected loans dataset
+
+```{r}
+str(rejected_loans)
+```
+
+### Summary of accepted and rejected loans dataset
+
+```{r}
+summary(accepted_loans)
+summary(rejected_loans)
+```
+
+
+## Question 3: Do the loan grades provided each customer correlate to their loan repayment behavior based on income and their loan status? 
+
+### **Inspecting the Relevant Variables**
+
+1. Loan Grades ('grade')
+2. Income ('annual_inc')
+3. Loan status ('loan_status' - )
+
+### Inspecting key columns
+```{r inspect_data}
+colnames(accepted_loans)
+head(accepted_loans)
+```
+
+
+```{r}
+table(accepted_loans$loan_status)
+table(accepted_loans$grade)
+
+```
+
+
+### **Filtering the Data Based on Loan Status**
+### Let’s focus on loan statuses that reflect repayment behavior, such as "Fully Paid" and "Default."
+
+```{r filter_data}
+# Filter for loans that are either fully paid or defaulted
+loan_data_filtered <- accepted_loans %>%
+  filter(loan_status %in% c("Fully Paid", "Default"))
+
+# Check the distribution of loan statuses
+table(loan_data_filtered$loan_status)
+```
+
+### ** Analyze Loan Grades vs Loan Status**
+### Now we analyze whether loan grades correlate with loan repayment behavior (loan status). 
+
+#### **Visualizing the Relationship Between Loan Grade and Loan Status:**
+
+```{r grade_vs_status_plot}
+# Plot the relationship between loan grade and loan status
+ggplot(loan_data_filtered, aes(x = grade, fill = loan_status)) +
+  geom_bar(position = "fill") +
+  ggtitle("Loan Grades vs Loan Status") +
+  ylab("Proportion of Loan Status") +
+  xlab("Loan Grade") +
+  scale_fill_manual(values = c("Fully Paid" = "blue", "Default" = "red"))
+
+```
+
+### **Step 6: Perform a chi-squared test**
+
+#### We can use a chi-squared test to statistically assess whether loan grades (specified as `grade`) and repayment behavior (loan status) are associated.
+
+
+```{r chi_squared_test}
+# Perform a chi-squared test on loan grades and loan status
+chisq_test <- chisq.test(table(loan_data_filtered$grade, loan_data_filtered$loan_status))
+
+# Show the results of the chi-squared test
+chisq_test
+```
+
+
+### **Step 7: Summarize the Data by Loan Grade**
+Finally, we can summarize the average income and repayment behavior for each loan grade.
+
+```{r summary_by_grade}
+# Summarize data by loan grade
+grade_summary <- loan_data_filtered %>%
+  group_by(grade) %>%
+  summarise(
+    avg_income = mean(annual_inc, na.rm = TRUE),
+    fully_paid_ratio = sum(loan_status == "Fully Paid") / n()
+  )
+
+# Display the summary in a table
+kable(grade_summary, caption = "Average Income and Fully Paid Ratio by Loan Grade") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+
+```
+
