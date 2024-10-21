@@ -1133,10 +1133,7 @@ rm(dfr1)
 
 
 
-
-#Question 3 and answers go here:
-
-## Do the loan grades provided to each customer correlate to their loan repayment behavior based on income and loan status?
+# 3 Do the loan grades provided to each customer correlate to their loan repayment behavior based on income and loan status?
 
 ```{r preprocess_data}
 
@@ -1152,7 +1149,7 @@ data <- data %>%
 
 
 ## 3.1 Loan Repayment By Grade
-### BAR PLOT
+### 3.1.1 BAR PLOT
 
 
 ```{r loan_repayment_rate_by_grade, fig.width=10, fig.height=6}
@@ -1199,7 +1196,7 @@ ggplot(repayment_rate, aes(x = grade, y = repayment_rate, fill = grade)) +
 
 
 ## 3.2 Income Distribution By Loan Grade
-### BOX PLOT
+### 3.2.1 BOX PLOT
 
 ```{r income-distribution-boxplot}
 
@@ -1268,7 +1265,7 @@ ggsave("income_distribution_boxplot_no_outliers.png", plot = income_plot, width 
 
 
 
-## Data Preparation for Heatmap Analysis
+## 3.3 Data Preparation for Heatmap Analysis
 
 ```{r prepare-data}
 # Create income brackets
@@ -1294,8 +1291,8 @@ print(repayment_rates)
 ```
 
 
-## 3.3 Repayment Rate by Grade and Income Bracket 
-### HEATMAP
+## 3.4 Repayment Rate by Grade and Income Bracket 
+### 3.4.1 HEATMAP
 
 
 ```{r repayment-heatmap, fig.width=12, fig.height=8}
@@ -1329,7 +1326,7 @@ ggplot(heatmap_data, aes(x = income_bracket, y = grade, fill = repayment_rate)) 
 
 
 
-## 3.4 ANOVA Test
+## 3.5 ANOVA Test
 
 ```{r anova_test_income_across_grades}
 
@@ -1356,7 +1353,7 @@ F-statistic = 1260.67, p-value = 0.0000
 --Confirmation of visual trends: These results statistically confirm the visual trends observed in previous charts, where higher loan grades were associated with higher incomes. The ANOVA provides robust evidence that these income differences across grades are not due to chance.
 
 
-## 3.5 Chi Square Test Grade Vs Loan Status
+## 3.6 Chi Square Test Grade Vs Loan Status
 
 
 
@@ -1394,7 +1391,7 @@ print(chi_square_result$expected)
 
 
 
-## Interpretation Of chi Square Test 
+### 3.6.1 Interpretation Of chi Square Test 
 
 ```{r interpretation}
 # Interpretation
@@ -1434,8 +1431,8 @@ Negligible association
 
 
 
-## 3.6 Loan Status Distribution By Grade 
-### STACKED BAR CHART
+## 3.7 Loan Status Distribution By Grade 
+### 3.7.1 STACKED BAR CHART
 
 
 ```{R Loan Status Distribution by Grade}
@@ -1461,7 +1458,14 @@ data %>%
 
 
 
-#Conclusion is here. 
+# 5 Conclusion
+
+Interest rates and term are the strongest predictors of loan charge offs, while loan amount does not significantly affect loan status.
+The analysis highlights significant shifts in lending practices and loan applicant profiles before and after 2015. A more conservative lending approach emerged post-2015, marked by stricter criteria for risk scores and a preference for applicants with lower debt-to-income ratios and higher creditworthiness.
+Loan grades strongly correlate with repayment behavior, with higher grades consistently showing better repayment rates. Income levels play a secondary role. The grading system appears to be effective in predicting loan outcomes.
+In the accepted dataset, employment length significantly varies by loan grade, suggesting longer employment is linked to higher grades. In the rejected dataset, employment length has a weak but significant correlation with amount requested and a strong, significant impact on risk score, but shows no significant relationship with debt-to-income ratio.
+
+
 
 
 
