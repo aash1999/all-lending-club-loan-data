@@ -473,12 +473,6 @@ The charged-off percentage increases from Q1 2013 (14.9%) to Q2 2015 (18.5%), th
 
 ## Hypothesis Testing for Key Financial Features
 
-Here’s a brief introduction for **2.2 Hypothesis Testing for Key Financial Features** in your R Markdown file, stating the null and alternative hypotheses:
-
----
-
-## Hypothesis Testing for Key Financial Features
-
 In this section, we conduct hypothesis testing on key financial features to examine their influence on loan outcomes, specifically the likelihood of a loan being charged off. Using Welch’s t-test, we compare loans issued before and after Q2 2015 to identify significant differences in features such as annual income, debt-to-income ratio, interest rate, FICO score, and other variables that may impact loan status.
 
 For each feature, the null hypothesis (H0) and alternative hypothesis (H1) are as follows:
