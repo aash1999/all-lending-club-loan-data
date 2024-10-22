@@ -1,0 +1,35 @@
+/* styles.css */
+
+/* General styles */
+body {
+    font-family: "Times New Roman", Times, serif;  /* Use Times New Roman */
+    line-height: 1.6;  /* Improve readability with increased line height */
+}
+
+/* Header styles */
+h1, h2, h3, h4, h5, h6 {
+    font-family: "Georgia", serif;  /* Use Georgia for headings */
+    margin-top: 20px;  /* Add space above headings */
+    margin-bottom: 10px;  /* Add space below headings */
+}
+
+/* Table styles */
+table {
+    border-collapse: collapse;  /* Collapse borders for tables */
+    width: 100%;  /* Full width for tables */
+    margin: 20px 0;  /* Add space around tables */
+}
+
+th, td {
+    border: 1px solid #dddddd;  /* Light grey borders for cells */
+    text-align: left;  /* Align text to the left */
+    padding: 8px;  /* Add padding to cells */
+}
+
+/* Image styles */
+img {
+    max-width: 100%;  /* Responsive images */
+    height: auto;  /* Maintain aspect ratio */
+}
+
+/* Other custom styles as needed */

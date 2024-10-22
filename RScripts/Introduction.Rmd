@@ -10,6 +10,7 @@ output:
     toc_depth: 3
     toc_float: true
     theme: "flatly"  # You can change this to another theme if preferred
+    css: "./styles.css"
   pdf_document:
     toc: true
     toc_depth: 3
@@ -62,7 +63,7 @@ dfr <- dfr %>% sample_frac(0.20)
 
 ```
 
-# i. Overview
+# Overview
 
 Since 2006, LendingClub has been a U.S. financial services company that has facilitated loan contracts. Our research will focus on LendingClub's loan data that consist of approved and rejected loans between 2013-2018. To understand LendingClub’s clientele, we will analyze borrower and loan characteristics to assess risk levels, determine loan acceptance, and understand what factors influence whether accepted loans will be fully repaid. To accomplish this, we will ask the following SMART questions:
 
@@ -75,7 +76,7 @@ Since 2006, LendingClub has been a U.S. financial services company that has faci
 
 4. Is there a relationship between employment length and the amount requested for rejected loans and how does it compare to the customers that had accepted loans?
 
-# ii. Data Dictionary
+# Data Dictionary
 
 1. Funded Amount: The total amount of the loan to be paid off.
 
@@ -95,7 +96,7 @@ Since 2006, LendingClub has been a U.S. financial services company that has faci
 
 9. Employment Length: The amount in years the customer has been employed. 
 
-# iii. About the Datasets
+# About the Datasets
 
 The datasets used in this research are collected from the Lending Club loan data, which is available on Kaggle: [Lending Club Loan Data](https://www.kaggle.com/datasets/wordsforthewise/lending-club). The data contains information about both accepted and rejected loan applications from 2013 to 2018.
 
@@ -134,7 +135,7 @@ This question focuses on assessing risk levels and looking into trends of when t
 Assumptions:
 In terms of loan status, we are only analyzing the "Fully Paid" and "Charge Off" status.
 
-## 1.1 Data Types & Data Cleaning
+## Data Types & Data Cleaning
 
 For this question, we will be looking at funded amount, loan status, term, and interest rate. 
 
@@ -171,9 +172,9 @@ str(df_final)
 
 ```
 
-## 1.2 Normality of Loan Amount & Interest Rate
+## Normality of Loan Amount & Interest Rate
 
-### 1.2.1 QQ Plot of Loan Amount
+### QQ Plot of Loan Amount
 
 ```{r, echo=TRUE}
 
@@ -184,7 +185,7 @@ rm(amount_plot)
 
 The loan amount data does not appear to follow a normal distribution based on the QQ plot, as there are significant deviations from the reference line, particularly at the tails. The lower quantiles fall below the line, while the upper quantiles rise far above it, indicating the presence of heavy tails. Additionally, the stepped line in the middle suggests that the data isn't evenly distributed. Even with the outliers removed, there are still extreme deviations at both ends therefore showing that this is not a normal distribution.    
 
-### 1.2.2 QQ Plot of Interest Rate
+### QQ Plot of Interest Rate
 
 
 ```{r, echo=TRUE}
@@ -198,11 +199,11 @@ The interest rate also shows similar trends. There are major deviations from the
 
 Overall, both loan amount and interest rate distributions are not normal when outliers are included. While showing improvement in normality when removing outliers, deviations still occur at the extremes. As a result, these datasets don't follow normality due to these deviations. 
 
-## 1.3 Descriptive Statistics
+## Descriptive Statistics
 
 Initial statistics summarizes data that can help in identifying patterns, trends, and outliers. To demonstrate this, loan status will be analyzed against each loan feature (term, amount and interest rate) to see any relationships and patterns.  
 
-### 1.3.1 Relationship between Loan Status and Loan Term
+### Relationship between Loan Status and Loan Term
 
 ```{r, echo=TRUE}
 
@@ -233,7 +234,7 @@ When visually shown on a stacked bar chart, you'll notice that shorter terms are
 Overall, shorter loan terms are likelier to result in a charge off and appear to influence loan status. 
 
 
-### 1.3.1 Relationship between Loan Status and Loan Amount
+### Relationship between Loan Status and Loan Amount
 
 ```{r, echo=TRUE}
 # Descriptive Stats of Loan Amount Separated by Loan Status
@@ -274,7 +275,7 @@ Based on the boxplot, one commonality is the several outliers that exist around 
 Overall, larger loan amounts may be associated with a higher charged off risk. However holistically, loan amount alone does not appear to have a strong influence on whether a loan will be charged off or fully paid, given overlapping distributions. 
 
 
-### 1.3.2 Relationship Between Loan Status and Interest Rate
+### Relationship Between Loan Status and Interest Rate
 
 ```{r, echo=TRUE}
 # Descriptive Stats of Interest Rate Separated by Loan Status
@@ -392,7 +393,7 @@ df_final$issue_d <- as.Date(df_final$issue_d, format = "%Y-%m-%d")
 
 In this analysis, we aim to explore how key financial variables such as debt-to-income ratio (DTI), annual income, interest rate, and FICO score range affect the likelihood of a loan being fully paid or charged off between 2013 and 2018. By analyzing these variables over time, we can identify trends and patterns that may influence loan outcomes. Specifically, we seek to understand how these factors differ between loans that were successfully repaid versus those that were charged off, shedding light on risk factors and lending dynamics during this period.
 
-## 2.1 Analysis of Charged-Off Loan Percentage (2013-2018)
+## Analysis of Charged-Off Loan Percentage (2013-2018)
 
 In this section, we analyze the percentage of loans that were charged off (i.e., loans that borrowers were unable to fully repay) between 2013 and 2018. By aggregating loan data on a quarterly basis, we examine the trends in charged-off loans over time to gain insights into changes in lending risk and borrower behavior. Specifically, we explore how the charged-off loan percentage fluctuated over the years and consider potential factors that could explain these changes.
 
@@ -470,13 +471,13 @@ The charged-off percentage increases from Q1 2013 (14.9%) to Q2 2015 (18.5%), th
    - Since most loan tenures exceed three years, some active loans might charge off in the future (after 2018), for which we don't have data.
 
 
-## 2.2 Hypothesis Testing for Key Financial Features
+## Hypothesis Testing for Key Financial Features
 
 Here’s a brief introduction for **2.2 Hypothesis Testing for Key Financial Features** in your R Markdown file, stating the null and alternative hypotheses:
 
 ---
 
-## 2.2 Hypothesis Testing for Key Financial Features
+## Hypothesis Testing for Key Financial Features
 
 In this section, we conduct hypothesis testing on key financial features to examine their influence on loan outcomes, specifically the likelihood of a loan being charged off. Using Welch’s t-test, we compare loans issued before and after Q2 2015 to identify significant differences in features such as annual income, debt-to-income ratio, interest rate, FICO score, and other variables that may impact loan status.
 
@@ -649,7 +650,7 @@ rm(t_test_results_filtered)
   - Interpretation: No significant difference in months since the last delinquency.
 
 
-## 2.3 Correlation Plot Analysis
+## Correlation Plot Analysis
 
 In this section, we analyze the relationships between key financial variables using a correlation matrix. The correlation plot helps identify how different variables, such as income, loan amount, credit score, interest rate, and other features, interact with each other. By understanding these correlations, we can gain insights into how specific factors, like income or credit score, may influence loan characteristics and outcomes.
 
@@ -704,7 +705,7 @@ rm(cor_matrix)
   - `total_acc` and `open_acc` are highly correlated (0.7199), which is expected as they both measure account quantities in credit reports.
   - `total_acc` has a weak positive correlation with `loan_amnt` (0.1966), indicating that borrowers with more accounts tend to have slightly higher loan amounts.
 
-## 2.4 Analysis of Charged-Off Loans by State
+## Analysis of Charged-Off Loans by State
 
 In this section, we examine the geographical distribution of charged-off loans across U.S. states, focusing on changes in loan performance before and after Q2 2015. By analyzing the percentage of charged-off loans by state, we aim to identify regional trends and assess the impact of interventions implemented during this period. Using geographic visualization, we compare the frequency of charged-off loans across different states to uncover potential regional disparities in loan outcomes, and evaluate the success of interventions in improving loan performance in specific areas.
 
@@ -862,7 +863,7 @@ rm(frequency_data_before)
 
 The analysis highlights states like Nebraska and Iowa as significant cases with varying outcomes in charged-off loans. The successful interventions in Nebraska indicate that targeted strategies can yield substantial improvements in loan performance.
 
-## 2.5 Comparison of Debt-to-Income Ratios: Charged-Off vs. Fully Paid Loans (2013-2018)
+## Comparison of Debt-to-Income Ratios: Charged-Off vs. Fully Paid Loans (2013-2018)
 
 This section focuses on the debt-to-income (DTI) ratio and its relationship with loan outcomes, specifically comparing charged-off and fully paid loans between 2013 and 2018. The DTI ratio, a key metric used to assess borrowers' ability to manage loan repayments, is analyzed to identify its role as a potential risk factor for loan defaults. By visualizing DTI distributions across different quarters using box plots, we highlight differences between charged-off and fully paid loans and explore trends over time, providing insights into how DTI may influence loan performance.
 
@@ -929,7 +930,7 @@ The analysis indicates that higher DTI ratios are associated with charged-off lo
 
 
 
-## 2.6 Radar Chart Analysis of Loan Characteristics (2014 vs. 2018)
+## Radar Chart Analysis of Loan Characteristics (2014 vs. 2018)
 
 In this section, we use radar charts to compare key loan characteristics between loans issued in 2014 and 2018. By standardizing variables such as interest rates, annual income, FICO score range, and debt-to-income (DTI) ratio, we visualize changes in borrower profiles and loan terms over time. This analysis highlights shifts in loan affordability, borrower financial health, and creditworthiness, offering insights into how lending practices evolved during this period.
 
@@ -1042,7 +1043,7 @@ rm(radar_data_2014_2017)
 
 
 
-## 2.7 Contour Plot Comparing Risk Score vs. Debt-to-Income Ratio Before and After 2015
+## Contour Plot Comparing Risk Score vs. Debt-to-Income Ratio Before and After 2015
 
 This section examines the relationship between risk scores and debt-to-income (DTI) ratios for rejected loan applications, utilizing contour plots to visualize the distributions before and after 2015. By analyzing these trends, we aim to identify shifts in lending criteria and applicant profiles over time. The findings will provide insights into how lenders may have adjusted their risk assessment practices, reflecting broader economic changes and evolving borrower risk profiles.
 
@@ -1135,7 +1136,7 @@ rm(dfr_after_2015_clean)
   The increased spread in both the risk scores and DTI ratios for rejected loans after 2015 may indicate changes in risk assessment and rejection criteria. Lenders might have shifted their focus, possibly due to economic changes post-2015, leading to the rejection of both higher-risk and lower-risk applicants with varying debt profiles.
 
 
-## 2.8 Histogram Analysis of Debt-to-Income Ratios (DTI) for Rejected Loans
+## Histogram Analysis of Debt-to-Income Ratios (DTI) for Rejected Loans
 
 In this section, we conduct a histogram analysis of debt-to-income (DTI) ratios for rejected loans, focusing on data from before and after 2015. By visualizing the frequency distribution of DTI ratios, we aim to uncover trends in lending practices and the criteria used for loan rejection over time.
 
@@ -1236,8 +1237,8 @@ df_final <- df %>%
 ```
 
 
-## 3.1 Loan Repayment By Grade
-### 3.1.1 BAR PLOT
+## Loan Repayment By Grade
+### BAR PLOT
 
 In this section, we analyze the loan repayment rates categorized by loan grades using a bar plot. By transforming loan status into a binary variable—where "Fully Paid" is coded as 1 and "Charged Off" as 0—we can effectively calculate the repayment rate for each grade.
 
@@ -1289,8 +1290,8 @@ rm(repayment_rate)
 
 
 
-## 3.2 Income Distribution By Loan Grade
-### 3.2.1 BOX PLOT
+## Income Distribution By Loan Grade
+### BOX PLOT
 
 In this section, we analyze the distribution of annual income across different loan grades using a box plot. The box plot provides a visual representation of the income variability within each grade while also highlighting the median income. To ensure accuracy, we employ an outlier removal technique based on the interquartile range (IQR), which helps to focus the analysis on the central tendency of the income distribution. Our findings reveal a clear correlation between loan grade and income, with higher grades consistently associated with greater median incomes. Additionally, we observe that the income disparity narrows among lower grades, indicating that other factors may play a significant role in determining loan grades. This analysis not only emphasizes the importance of income in the lending process but also suggests that additional criteria may influence loan classification, particularly in the lower-grade categories.
 
@@ -1391,13 +1392,13 @@ rm(heatmap_data)
 ```
 
 
-## 3.3 Repayment Rate by Grade and Income Bracket 
+## Repayment Rate by Grade and Income Bracket 
 
 In this section, we focus on preparing the data for a heatmap analysis that explores the relationship between income brackets and loan repayment rates across different loan grades. To facilitate this analysis, we first categorize annual income into distinct brackets using quantiles, which helps in understanding how income levels relate to repayment behavior. The income brackets include "Very Low," "Low," "Medium," "High," and "Very High," and are structured to reflect varying financial capacities of borrowers. 
 
 Next, we calculate the repayment rates for each combination of loan grade and income bracket, providing insights into how repayment likelihood varies based on these factors. This transformation of the data into a wide format allows for an effective visualization of repayment rates in a heatmap, highlighting trends and patterns across different income segments and loan grades. The findings from this analysis can inform lending strategies and risk assessment, showcasing the intricate interplay between borrower income and loan performance.
 
-### 3.3.1 HEATMAP
+### HEATMAP
 
 
 ```{r repayment-heatmap, fig.width=12, fig.height=8}
@@ -1433,7 +1434,7 @@ rm(repayment_rates)
 
 
 
-## 3.4 ANOVA Test
+## ANOVA Test
 
 This section presents the results of an ANOVA test aimed at assessing whether there are significant differences in annual income across various loan grades. The test revealed an F-statistic of 1260.67 and a p-value of 0.0000, indicating highly statistically significant differences in income levels across the grades. These findings confirm the strong relationship between income and loan grades, supporting earlier visual observations that higher grades are associated with higher incomes. Overall, the results suggest that income is a key factor in determining loan grades.
 
@@ -1465,7 +1466,7 @@ rm(anova_summary)
 - **Confirmation of visual trends**: These results statistically confirm the visual trends observed in previous charts, where higher loan grades were associated with higher incomes. The ANOVA provides robust evidence that these income differences across grades are not due to chance.
 
 
-## 3.5 Chi Square Test Grade Vs Loan Status
+## Chi Square Test Grade Vs Loan Status
 
 In this section, we conduct a Chi-Square test to evaluate the relationship between loan grades and loan status outcomes. The results indicate a highly significant association between these two variables, with a p-value of 0.0000. Specifically, the analysis reveals that Grade A loans have a higher-than-expected number of "Fully Paid" outcomes, while lower grades (E, F, and G) exhibit a concerning trend with increased "Charged Off" and "Late" payments. These findings suggest that loan grade is a strong predictor of loan performance, reinforcing the notion that higher grades correspond to lower risk in loan repayments.
 
@@ -1505,7 +1506,7 @@ rm(chi_square_result)
 
 
 
-### 3.5.1 Interpretation Of chi Square Test 
+### Interpretation Of chi Square Test 
 
 ```{r interpretation}
 # Interpretation
@@ -1538,8 +1539,8 @@ if (cramer_v < 0.1) {
 
 
 
-## 3.6 Loan Status Distribution By Grade 
-### 3.6.1 STACKED BAR CHART
+## Loan Status Distribution By Grade 
+### STACKED BAR CHART
 
 This section presents a stacked bar chart illustrating the distribution of loan statuses by grade. The visualization highlights a clear inverse relationship between loan grade and charge-off rates, with Grade A loans exhibiting the lowest charge-off proportions and Grade G loans the highest. Additionally, higher grades (A and B) show a significantly greater proportion of fully paid loans, emphasizing their lower risk profile. Conversely, as loan grades decrease, the proportion of loans in "Current" status increases, suggesting potential borrower behavior trends and the impact of loan terms on repayment patterns.
 
@@ -1573,7 +1574,7 @@ rm(df_final)
 This analysis explores the relationship between employment length and the amount requested for both rejected and accepted loans. By comparing these two groups, we aim to understand how employment stability may influence loan-seeking behavior and the associated loan amounts. This comparison will help identify potential trends and differences that could inform lending practices and risk assessments for various employment profiles.
 
 
-## 4.1 Data Cleaning
+## Data Cleaning
 
 In this section, we focus on cleaning the data for both accepted and rejected loans to ensure accurate analysis. Specifically, we will standardize the "Employment Length" and "Amount Requested" fields. For the employment length, we convert various formats into a consistent numeric representation, replacing values like "< 1 year" with 0.5 and "10+ years" with 10. We will also remove any unnecessary text for clarity. Additionally, we will clean the loan amount fields to confirm they are numeric, stripping away any non-numeric characters. This cleaning process is essential to facilitate meaningful comparisons between the two loan groups and to analyze their relationship with the requested amounts effectively.
 
@@ -1622,9 +1623,9 @@ rejected_loans$amount_requested_cleaned <- as.numeric(gsub("[^0-9.]", "", reject
 
 ```
 
-## 4.2 Analysis of Employment length and loan amount
+## Analysis of Employment length and loan amount
 
-### 4.2.1 Accepted loan
+### Accepted loan
 
 This section presents a boxplot analysis comparing employment length with loan amounts for accepted loans.
 
@@ -1641,7 +1642,7 @@ ggplot(accepted_loans, aes(x = as.factor(emp_length_cleaned), y = loan_amnt_clea
 
 The median loan amount is between 10.000 USD to 20.000 USD for the accepted loan dataset. Their loan had been accepted at this rate without much change in amount throughout the different employment length category.
 
-### 4.2.2 Rejected Loans
+### Rejected Loans
 
 In this section, we focus on the rejected loan dataset, which contains approximately 117,000 observations out of a total of 22 million. This accounts for less than 0.5% of the data pertaining to loan requests, with amounts reaching up to 1 million USD. To ensure a more accurate analysis, we have removed outliers that exhibited excessive deviation from the overall dataset. This cleaning process will help us better understand the relationship between employment length and the amount requested for rejected loans.
 
@@ -1668,7 +1669,7 @@ rejected_loans_filtered <- rejected_loans %>%
 
 Rejected dataset has 117000 observations out of 22 million observation data which is less than 0.5% of the data in loan requested amount ranging into 1 million USD loan request. We've removed the outliers that has extensive reach and deviation from the dataset. 
 
-## 4.3 Boxplot for Outlier-Exempted Data in Analyzing Employment Length and Amount Requested for the Rejected Loans Dataset
+## Boxplot for Outlier-Exempted Data in Analyzing Employment Length and Amount Requested for the Rejected Loans Dataset
 
 This section presents a boxplot analysis of the rejected loans dataset, focusing on the relationship between employment length and the amount requested after removing outliers.
 
@@ -1686,7 +1687,7 @@ ggplot(rejected_loans_filtered, aes(x = as.factor(emp_length_cleaned), y = amoun
 The rejected dataset processing shows that amount requested had good amount of variation for the each employment category. Loan amounts ranged from less than 5000 USD to around 25.000USD. In order to understand the frequency of the loan amount requested we can create density plot for both accepted and rejected loan dataset. That way we can determined at what frequency how much had been requested or granted to the applicants. 
 
 
-## 4.4 Density Plot for the Distribution of Requested Amount in the Rejected Loan Dataset
+## Density Plot for the Distribution of Requested Amount in the Rejected Loan Dataset
 
 This section explores the distribution of requested amounts in the rejected loans dataset through a density plot. Out of approximately 22 million observations, around 4 million applicants requested $10,000, making it the most common loan amount sought. This is followed by requests for $5,000, $1,000, $20,000, and $15,000. 
 
@@ -1718,7 +1719,7 @@ ggplot(accepted_loans, aes(x = loan_amnt_cleaned)) +
 
 In the accapted loan, we can see 10000USD loan package was the most granted, followed by 20000USD and 15000USD. 
 
-## 4.5 Employment Length Pie Chart (Rejected Loans)
+## Employment Length Pie Chart (Rejected Loans)
 
 This section presents a pie chart visualizing the distribution of employment lengths among applicants whose loan requests were rejected. The analysis focuses on applicants with employment lengths between 1 and 10 years. The chart reveals that 69% of rejected loans were associated with applicants who had 5 years of employment. Additionally, 11.5% of the rejected applications came from individuals with 10 or more years of employment. This visualization highlights the relationship between employment length and loan rejection rates, providing insights into the employment profiles of applicants in the rejected loans dataset.
 
@@ -1754,7 +1755,7 @@ ggplot(emp_length_df, aes(x = "", y = Percentage, fill = factor(Employment_Lengt
 
 Employment length pie chart is designed to showcase and visualize the dataset. From our graphic we can see that 69% of the rejected loan were at 5 year employment length. And 11.5% of the dataset is showing employment length of 10 years and more as the second highest category to request loan and get rejected by the employment category. 
 
-## 4.6 Employment Length Pie Chart (Accepted Loans)
+## Employment Length Pie Chart (Accepted Loans)
 
 This section presents a pie chart visualizing the distribution of employment lengths among applicants whose loan requests were accepted. The analysis focuses on applicants with employment lengths between 1 and 10 years. Notably, 42.6% of accepted loan applications came from individuals with 10 or more years of employment, indicating a significant correlation between longer employment duration and loan acceptance. In contrast, this category represented just over 11% of the rejected applications. This suggests that loan companies may be more inclined to approve requests from applicants with extensive employment histories, reflecting a potential preference for stability and reliability in the applicant's profile.
 
@@ -1822,7 +1823,7 @@ rejected_loans <- clean_numeric(rejected_loans, rejected_columns, percent_column
 
 ```
 
-## 4.7 Accepted loan analysis: Employment VS loan grade   VS Annual income VS DTI
+## Accepted loan analysis: Employment VS loan grade   VS Annual income VS DTI
 We have asked ourselves how the employment length is influencing the applicant's change of being granted the loan and we've analyzed how much percentage of the loan was granted to each employment length group ranging from less than 1 year and 10 or more years. We can now run statistical tests to see how confident or relevant this could be in such big amount of dataset. 
 
 
@@ -1884,7 +1885,7 @@ The results of your **ANOVA test** for the relationship between **employment len
 - **Practical Interpretation**: Higher loan grades might be associated with longer employment lengths, while lower loan grades might correspond to shorter employment histories (though this would need to be confirmed by looking at the specific group means).
 
 
-## 4.8 Rejected loan analysis: Employment length and Amount requested VS DTI risk score
+## Rejected loan analysis: Employment length and Amount requested VS DTI risk score
 
 ```{r}
 # Load necessary libraries
@@ -1962,20 +1963,20 @@ Explanation:
 - However, note that while the relationship is statistically significant, this does not automatically imply a strong relationship. The actual strength of the relationship can be further interpreted by examining the regression coefficients (we had not done that analysis)
 
 
-## 4.9 Summary of findings in Question 4: 
+## Summary of findings in Question 4: 
 
 In both the accepted and rejected loan datasets, **employment length** shows a statistically significant relationship with loan outcomes, though the strength varies. In the accepted dataset, **employment length** significantly differs across **loan grades**, indicating that longer employment histories may be associated with higher loan grades. In the rejected dataset, while **employment length** has a weak but significant positive correlation with the **amount requested** and a strong impact on **risk score**, it shows no meaningful relationship with **debt-to-income ratio**. Since we've have worked with big dataset, we can say that having longer years of employment history you will have higher change of getting accepted the loan. Most of the applicants with long work history had good risk score and had higher loan grades making them preferred candidates from Lending agency's perspective. 
 
 
 
-# iv. Conclusion
+# Conclusion
 
 Interest rates and term are the strongest predictors of loan charge offs, while loan amount does not significantly affect loan status.
 The analysis highlights significant shifts in lending practices and loan applicant profiles before and after 2015. A more conservative lending approach emerged post-2015, marked by stricter criteria for risk scores and a preference for applicants with lower debt-to-income ratios and higher creditworthiness.
 Loan grades strongly correlate with repayment behavior, with higher grades consistently showing better repayment rates. Income levels play a secondary role. The grading system appears to be effective in predicting loan outcomes.
 In the accepted dataset, employment length significantly varies by loan grade, suggesting longer employment is linked to higher grades. In the rejected dataset, employment length has a weak but significant correlation with amount requested and a strong, significant impact on risk score, but shows no significant relationship with debt-to-income ratio.
 
-# v. References
+# References
 
 1. Words For The Wise. (n.d.). *Lending Club dataset*. Kaggle. https://www.kaggle.com/datasets/wordsforthewise/lending-club
 
