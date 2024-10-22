@@ -5,14 +5,23 @@ date: "10/20/24"
 output:
   html_document:
     code_folding: hide
-    number_sections: false
-    toc: yes
+    number_sections: true
+    toc: true
     toc_depth: 3
-    toc_float: yes
+    toc_float: true
+    theme: "flatly"  # You can change this to another theme if preferred
   pdf_document:
-    toc: yes
-    toc_depth: '3'
+    toc: true
+    toc_depth: 3
+header-includes:
+  - \usepackage{graphicx}  # Allows inclusion of graphics
+  - \setlength{\headheight}{50pt}  # Adjusts header height for graphics
 ---
+
+
+```{r include-banner, echo=FALSE, out.width='100%'}
+knitr::include_graphics("../gwu_banner.png")  # Replace with your banner's file path
+```
 
 ```{r setup, include=F}
 # Some of common RMD options (and the defaults) are: 
@@ -116,7 +125,7 @@ str(dfr)  # Displaying structure of rejected dataset
 These datasets are pivotal for analyzing the factors contributing to the approval or rejection of loan applications, helping us understand credit risk management and lending patterns during the specified time period.
 
 
-# Reasearch Question 1
+# Research Question 1
 
 **How do the loan features of term, amount, and interest rate individually influence the likelihood of a loan being charged off versus being fully paid?**
 
@@ -1210,7 +1219,9 @@ rm(dfr1)
 
 
 
-# 3 Do the loan grades provided to each customer correlate to their loan repayment behavior based on income and loan status?
+# Research Question 3
+
+**Do the loan grades provided to each customer correlate to their loan repayment behavior based on income and loan status?**
 
 ```{r preprocess_data}
 
@@ -1270,11 +1281,11 @@ rm(repayment_rate)
 ```
 
 
--Clear correlation between grade and repayment: There's a strong positive relationship between loan grade and repayment rate. As the grade improves from G to A, the repayment rate steadily increases.
+- **Clear correlation between grade and repayment**: There's a strong positive relationship between loan grade and repayment rate. As the grade improves from G to A, the repayment rate steadily increases.
 
--Significant gap between top and bottom grades: The highest grade (A) has a repayment rate of 94%, while the lowest grade (G) is at 49.2% - a difference of nearly 45 percentage points. This highlights the substantial risk difference between the best and worst-rated loans.
+- **Significant gap between top and bottom grades**: The highest grade (A) has a repayment rate of 94%, while the lowest grade (G) is at 49.2%—a difference of nearly 45 percentage points. This highlights the substantial risk difference between the best and worst-rated loans.
 
--Steeper drops in lower grades: The decrease in repayment rate appears more pronounced between lower grades (e.g., from E to F to G) compared to higher grades. This suggests that risk increases more rapidly as loan quality declines below a certain threshold.
+- **Steeper drops in lower grades**: The decrease in repayment rate appears more pronounced between lower grades (e.g., from E to F to G) compared to higher grades. This suggests that risk increases more rapidly as loan quality declines below a certain threshold.
 
 
 
@@ -1347,11 +1358,11 @@ rm(plot_data)
 ```
 
 
---Higher income for better grades: There's a clear trend of higher median incomes for better loan grades. Grade A has the highest median income at $74,000, while lower grades (C through G) have lower median incomes around $60,000-$62,000.
+- **Higher income for better grades**: There's a clear trend of higher median incomes for better loan grades. Grade A has the highest median income at $74,000, while lower grades (C through G) have lower median incomes around $60,000-$62,000.
 
---Income disparity narrows in lower grades: The income distributions for grades C through G are very similar, with median incomes clustered closely together. This suggests that factors other than income may be more influential in determining these lower grades.
+- **Income disparity narrows in lower grades**: The income distributions for grades C through G are very similar, with median incomes clustered closely together. This suggests that factors other than income may be more influential in determining these lower grades.
 
---Wider income range for top grades: The boxplots for grades A and B appear to have larger interquartile ranges, indicating more income variability among borrowers in these categories. This could suggest that high-grade loans are accessible to a broader range of income levels, possibly due to other strong credit factors.
+- **Wider income range for top grades**: The boxplots for grades A and B appear to have larger interquartile ranges, indicating more income variability among borrowers in these categories. This could suggest that high-grade loans are accessible to a broader range of income levels, possibly due to other strong credit factors.
 
 
 
@@ -1381,6 +1392,7 @@ rm(heatmap_data)
 
 
 ## 3.3 Repayment Rate by Grade and Income Bracket 
+
 In this section, we focus on preparing the data for a heatmap analysis that explores the relationship between income brackets and loan repayment rates across different loan grades. To facilitate this analysis, we first categorize annual income into distinct brackets using quantiles, which helps in understanding how income levels relate to repayment behavior. The income brackets include "Very Low," "Low," "Medium," "High," and "Very High," and are structured to reflect varying financial capacities of borrowers. 
 
 Next, we calculate the repayment rates for each combination of loan grade and income bracket, providing insights into how repayment likelihood varies based on these factors. This transformation of the data into a wide format allows for an effective visualization of repayment rates in a heatmap, highlighting trends and patterns across different income segments and loan grades. The findings from this analysis can inform lending strategies and risk assessment, showcasing the intricate interplay between borrower income and loan performance.
@@ -1413,12 +1425,11 @@ rm(heatmap_data)
 rm(repayment_rates)
 ```
 
+- **Grade is the primary determinant of repayment**: There's a clear vertical gradient showing that loan grade has a stronger influence on repayment rates than income. Grade A loans consistently have the highest repayment rates (91-95%) across all income brackets, while Grade G loans have the lowest (46-57%).
 
---Grade is the primary determinant of repayment: There's a clear vertical gradient showing that loan grade has a stronger influence on repayment rates than income. Grade A loans consistently have the highest repayment rates (91-95%) across all income brackets, while Grade G loans have the lowest (46-57%)
+- **Income impact varies by grade**: For higher-grade loans (A-C), income has minimal effect on repayment rates. However, for lower-grade loans (D-G), there's a more noticeable positive correlation between income and repayment rates, particularly for the "Very High" income bracket.
 
---Income impact varies by grade: For higher-grade loans (A-C), income has minimal effect on repayment rates. However, for lower-grade loans (D-G), there's a more noticeable positive correlation between income and repayment rates, particularly for the "Very High" income bracket.
-
---Surprising trend in lowest grades: Counterintuitively, for the lowest grades (F-G), the "Very High" income bracket shows higher repayment rates than some middle income brackets. This suggests that high-income borrowers with poor credit scores might be better risks than their grades suggest.
+- **Surprising trend in lowest grades**: Counterintuitively, for the lowest grades (F-G), the "Very High" income bracket shows higher repayment rates than some middle income brackets. This suggests that high-income borrowers with poor credit scores might be better risks than their grades suggest.
 
 
 
@@ -1445,14 +1456,13 @@ rm(anova_summary)
 ```
 
 
---ANOVA test results for income differences across grades:
-F-statistic = 1260.67, p-value = 0.0000
+- **F-statistic**: 1260.67, **p-value**: 0.0000
 
---Statistically significant difference: The extremely low p-value (0.0000) indicates there are highly statistically significant differences in income levels across loan grades. This suggests that income is a meaningful factor in determining loan grades.
+- **Statistically significant difference**: The extremely low p-value (0.0000) indicates there are highly statistically significant differences in income levels across loan grades. This suggests that income is a meaningful factor in determining loan grades.
 
---Strong relationship: The large F-statistic (1260.67) indicates a strong relationship between loan grades and income levels. This suggests that income variations explain a substantial portion of the differences between loan grades.
+- **Strong relationship**: The large F-statistic (1260.67) indicates a strong relationship between loan grades and income levels. This suggests that income variations explain a substantial portion of the differences between loan grades.
 
---Confirmation of visual trends: These results statistically confirm the visual trends observed in previous charts, where higher loan grades were associated with higher incomes. The ANOVA provides robust evidence that these income differences across grades are not due to chance.
+- **Confirmation of visual trends**: These results statistically confirm the visual trends observed in previous charts, where higher loan grades were associated with higher incomes. The ANOVA provides robust evidence that these income differences across grades are not due to chance.
 
 
 ## 3.5 Chi Square Test Grade Vs Loan Status
@@ -1487,11 +1497,11 @@ rm(chi_square_result)
 ```
 
 
---Highly significant relationship: The extremely low p-value (0.0000) indicates a statistically significant relationship between loan grades and loan outcomes. This suggests that loan grade is a strong predictor of loan performance.
+- **Highly significant relationship**: The extremely low p-value (0.0000) indicates a statistically significant relationship between loan grades and loan outcomes. This suggests that loan grade is a strong predictor of loan performance.
 
---Grade A outperforms expectations: Comparing observed to expected frequencies, Grade A loans have far more "Fully Paid" outcomes (200,432 vs 188,974 expected) and fewer "Charged Off" outcomes (12,767 vs 48,229 expected) than expected. This underscores the lower risk associated with top-grade loans.
+- **Grade A outperforms expectations**: Comparing observed to expected frequencies, Grade A loans have far more "Fully Paid" outcomes (200,432 vs 188,974 expected) and fewer "Charged Off" outcomes (12,767 vs 48,229 expected) than expected. This underscores the lower risk associated with top-grade loans.
 
---Lower grades struggle more: Grades E, F, and G show higher frequencies of "Charged Off" and "Late" payments compared to their expected values. This aligns with the higher risk profile of lower-grade loans and supports the trends seen in previous analyses.
+- **Lower grades struggle more**: Grades E, F, and G show higher frequencies of "Charged Off" and "Late" payments compared to their expected values. This aligns with the higher risk profile of lower-grade loans and supports the trends seen in previous analyses.
 
 
 
@@ -1548,11 +1558,11 @@ rm(df_final)
 ```
 
 
---Inverse relationship between grade and charge-offs: There's a clear trend of increasing charge-off rates as the loan grade decreases. Grade A loans have the lowest proportion of charge-offs, while Grade G has the highest. This reinforces the higher risk associated with lower-grade loans.
+- **Inverse relationship between grade and charge-offs**: There's a clear trend of increasing charge-off rates as the loan grade decreases. Grade A loans have the lowest proportion of charge-offs, while Grade G has the highest. This reinforces the higher risk associated with lower-grade loans.
 
---Fully paid loans dominate higher grades: Grades A and B show a significantly higher proportion of fully paid loans compared to lower grades. This indicates that higher-grade loans are more likely to be repaid in full, aligning with their lower risk profile.
+- **Fully paid loans dominate higher grades**: Grades A and B show a significantly higher proportion of fully paid loans compared to lower grades. This indicates that higher-grade loans are more likely to be repaid in full, aligning with their lower risk profile.
 
---Current loans increase in lower grades: The proportion of loans in "Current" status increases noticeably from Grade C to G. This could suggest that lower-grade loans have longer terms or that borrowers of lower-grade loans are more likely to make minimum payments rather than paying off the loan early.
+- **Current loans increase in lower grades**: The proportion of loans in "Current" status increases noticeably from Grade C to G. This could suggest that lower-grade loans have longer terms or that borrowers of lower-grade loans are more likely to make minimum payments rather than paying off the loan early.
 
 
 
@@ -1952,20 +1962,20 @@ Explanation:
 - However, note that while the relationship is statistically significant, this does not automatically imply a strong relationship. The actual strength of the relationship can be further interpreted by examining the regression coefficients (we had not done that analysis)
 
 
-# 4.9 Summary of findings in Question 4: 
+## 4.9 Summary of findings in Question 4: 
 
 In both the accepted and rejected loan datasets, **employment length** shows a statistically significant relationship with loan outcomes, though the strength varies. In the accepted dataset, **employment length** significantly differs across **loan grades**, indicating that longer employment histories may be associated with higher loan grades. In the rejected dataset, while **employment length** has a weak but significant positive correlation with the **amount requested** and a strong impact on **risk score**, it shows no meaningful relationship with **debt-to-income ratio**. Since we've have worked with big dataset, we can say that having longer years of employment history you will have higher change of getting accepted the loan. Most of the applicants with long work history had good risk score and had higher loan grades making them preferred candidates from Lending agency's perspective. 
 
 
 
-# 5 Conclusion
+# iv. Conclusion
 
 Interest rates and term are the strongest predictors of loan charge offs, while loan amount does not significantly affect loan status.
 The analysis highlights significant shifts in lending practices and loan applicant profiles before and after 2015. A more conservative lending approach emerged post-2015, marked by stricter criteria for risk scores and a preference for applicants with lower debt-to-income ratios and higher creditworthiness.
 Loan grades strongly correlate with repayment behavior, with higher grades consistently showing better repayment rates. Income levels play a secondary role. The grading system appears to be effective in predicting loan outcomes.
 In the accepted dataset, employment length significantly varies by loan grade, suggesting longer employment is linked to higher grades. In the rejected dataset, employment length has a weak but significant correlation with amount requested and a strong, significant impact on risk score, but shows no significant relationship with debt-to-income ratio.
 
-# 6 References
+# v. References
 
 1. Words For The Wise. (n.d.). *Lending Club dataset*. Kaggle. https://www.kaggle.com/datasets/wordsforthewise/lending-club
 
