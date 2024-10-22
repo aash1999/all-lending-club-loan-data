@@ -101,8 +101,6 @@ Since 2006, LendingClub has been a U.S. financial services company that has faci
 The datasets used in this research are collected from the Lending Club loan data, which is available on Kaggle: [Lending Club Loan Data](https://www.kaggle.com/datasets/wordsforthewise/lending-club). The data contains information about both accepted and rejected loan applications from 2013 to 2018.
 
 ## Accepted Dataset:
-Here is how you can write the **About the Datasets** section in your R Markdown file, providing information about the dataset counts, structure, and source:
-
 
 ```{r}
 print("Accepted Dataset:")
@@ -484,11 +482,6 @@ Based on the p-values obtained from the t-tests, we determine whether to reject 
 
 
 ```{r}
-# T-test
-
-# Ensure you're using the tidyverse for complete functionality
-# Uncomment the following line if you want to load the entire tidyverse
-# library(tidyverse)
 
 # Step 1: Verify and convert 'issue_d' to Date if necessary
 df_final$issue_d <- as.Date(df_final$issue_d, format = "%Y-%m-%d")  # Adjust the format if necessary
@@ -654,7 +647,7 @@ The correlation matrix is visualized to highlight both positive and negative rel
 ```{r}
 #COOR PLOT
 
-# Load necessary libraries
+
 
 setDT(df_final)  # Converts df to a data.table, if it isn't one already
 
@@ -800,7 +793,7 @@ ggplot() +
   # Adjust the size scale
   scale_size_continuous(
     range = c(3, 10),  # Adjusting the size range
-    name = "Percentage of Charged Off Loans"
+    name = "% of Charged Off Loans"
   ) +
   
   # Define color scale
@@ -808,7 +801,7 @@ ggplot() +
                      name = "Time Period") +
   
   # Labels and title
-  labs(title = "Percentage of Charged Off Loans by State (Before and After Q2 2015)",
+  labs(title = "% of Charged Off Loans by State (Before and After Q2 2015)",
        x = "Longitude",
        y = "Latitude") +
   
@@ -903,7 +896,7 @@ df_no_outliers$quarter <- factor(df_no_outliers$quarter,
 # Plot box plot for dti for each quarter with loan_status distinction (without outliers)
 ggplot(df_no_outliers, aes(x = quarter, y = dti, fill = loan_status)) +
   geom_boxplot() +
-  labs(title = "DTI Box Plot by Quarter for Charged Off and Fully Paid Loans (Outliers Removed)",
+  labs(title = "DTI Box Plot by Quarter for Charged Off and Fully Paid Loans",
        x = "Quarter",
        y = "DTI",
        fill = "Loan Status") +
@@ -1220,9 +1213,6 @@ rm(dfr1)
 
 ```{r preprocess_data}
 
-
-# Preprocess the data
-# Assuming 'loan_status' has values 'Fully Paid' and 'Charged Off'
 df_final <- df %>%
 
   mutate(loan_status_num = ifelse(loan_status == "Fully Paid", 1, 
@@ -1240,8 +1230,6 @@ The bar plot will visually represent the correlation between loan grades and rep
 
 ```{r loan_repayment_rate_by_grade, fig.width=10, fig.height=6}
 
-
-# Create 'loan_status_binary' column
 # Assuming "Fully Paid" = 1 and "Charged Off" = 0
 df_final <- df_final %>%
   mutate(loan_status_binary = ifelse(loan_status == "Fully Paid", 1, 
