@@ -28,7 +28,7 @@ knitr::include_graphics("../gwu_banner.png")  # Replace with your banner's file 
 # include=T, eval=T, echo=T, results='hide'/'asis'/'markup',..., collapse=F, warning=T, message=T, error=T, cache=T, fig.width=6, fig.height=4, fig.dim=c(6,4) #inches, fig.align='left'/'center','right', 
 knitr::opts_chunk$set(results="markup", warning = F, message = F, comment = NA, fig.align= 'center')
 # Can globally set option for number display format.
-options(scientific=T, digits = 3) 
+options(scipen = 9, digits = 3)
 # options(scipen=9, digits = 3) 
 library(dplyr)
 library(ezids)
