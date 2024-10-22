@@ -109,8 +109,8 @@ print("Accepted Dataset:")
 str(df)  # Displaying structure of accepted dataset
 ```
 
-- **Count**: The dataset contains approximately `nrow(df)` approved loans.
-- **Structure**: The dataset has `ncol(df)` variables capturing various aspects of each loan and borrower profile, such as credit score, loan amount, employment length, and loan status.
+- **Count**: The dataset contains approximately `r nrow(df)` approved loans.
+- **Structure**: The dataset has `r ncol(df)` variables capturing various aspects of each loan and borrower profile, such as credit score, loan amount, employment length, and loan status.
 
 ## Rejected Dataset:
 The **Rejected Dataset** comprises loan applications that were not approved by Lending Club. This dataset includes important information on why certain applicants were denied, based on factors like their debt-to-income ratio and risk score.
@@ -120,8 +120,8 @@ print("Rejected Dataset:")
 str(dfr)  # Displaying structure of rejected dataset
 ```
 
-- **Count**: The rejected loan dataset contains around `nrow(dfr)` rejected applications.
-- **Structure**: This dataset includes `ncol(dfr)` variables, focusing on key aspects like the applicant's risk score, debt-to-income ratio, and application date.
+- **Count**: The rejected loan dataset contains around `r nrow(dfr)` rejected applications.
+- **Structure**: This dataset includes `r ncol(dfr)` variables, focusing on key aspects like the applicant's risk score, debt-to-income ratio, and application date.
 
 These datasets are pivotal for analyzing the factors contributing to the approval or rejection of loan applications, helping us understand credit risk management and lending patterns during the specified time period.
 
