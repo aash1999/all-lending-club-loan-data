@@ -1,0 +1,146 @@
+---
+title: "Data Preparation"
+output: html_document
+date: "2024-11-27"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(data.table)
+
+# Read large CSV
+data <- fread("../DataSet/cleaned_accepted_2013_to_2018Q4.csv")
+
+```
+
+```{r}
+
+df <- data[, c("issue_d", "loan_amnt", "int_rate", "grade", "sub_grade", "emp_length", "annual_inc", "dti", "fico_range_low", "fico_range_high", "last_fico_range_high", "last_fico_range_low", "open_acc_6m","loan_status")]
+
+```
+```{r}
+rm(data)
+```
+
+```{r}
+
+summary(df)
+
+```
+
+
+
+```{r}
+library(skimr)
+
+skim(df)
+
+```
+
+```{r}
+str(df)
+
+```
+
+```{r}
+# Convert specific columns to factors
+# Remove the first letter from sub_grade
+df$sub_grade <- substr(df$sub_grade, 2, nchar(df$sub_grade))
+df$grade <- factor(df$grade)
+df$sub_grade <- factor(df$sub_grade)
+df$emp_length <- factor(df$emp_length)
+df$loan_status <- factor(df$loan_status)
+str(df)
+```
+```{r}
+
+df <- df[df$loan_status %in% c("Charged Off", "Fully Paid"), ]
+df$loan_status <- factor(df$loan_status)
+str(df)
+head(df)
+```
+
+
+
+
+```{r}
+
+library(data.table)
+
+# Identify numerical columns
+numerical_columns <- c(
+  "loan_amnt", "int_rate", "annual_inc", "dti", 
+  "fico_range_low", "fico_range_high", 
+  "last_fico_range_low", "last_fico_range_high", 
+  "open_acc_6m"
+)
+
+# Standardize numerical columns
+df[, (numerical_columns) := lapply(.SD, scale), .SDcols = numerical_columns]
+
+```
+
+
+
+```{r}
+head(df)
+```
+
+
+
+
+
+
+
+```{r}
+freq <- table(df$loan_status)
+percentages <- prop.table(freq) * 100
+percentages
+
+```
+
+```{r}
+library(caret)
+
+# Set seed for reproducibility
+set.seed(123)  # Replace 123 with your desired random state
+
+# Split the data into training (70%) and the rest (30%)
+train_indices <- createDataPartition(df$loan_status, p = 0.7, list = FALSE)
+
+# Create training dataset
+train <- df[train_indices, ]
+
+# Remaining data for test and eval (30%)
+remaining <- df[-train_indices, ]
+
+# Split the remaining data into test (15%) and eval (15%)
+test_indices <- createDataPartition(remaining$loan_status, p = 0.5, list = FALSE)
+
+test <- remaining[test_indices, ]
+eval <- remaining[-test_indices, ]
+
+```
+
+
+```{r}
+head(train)
+head(test)
+head(eval)
+```
+
+
+```{r}
+# Save the train dataset
+write.csv(train, file = "../DataSet/train.csv", row.names = FALSE)
+
+# Save the test dataset
+write.csv(test, file = "../DataSet/test.csv", row.names = FALSE)
+
+# Save the evaluation dataset
+write.csv(eval, file = "../DataSet/eval.csv", row.names = FALSE)
+
+```
