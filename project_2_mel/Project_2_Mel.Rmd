@@ -1,4 +1,5 @@
 ---
+title: "Logistic Regression Model"
 output:
   html_document:
     code_folding: show
