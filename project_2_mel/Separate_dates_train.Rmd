@@ -1,0 +1,29 @@
+---
+title: "Separate Training Data Times"
+output: html_notebook
+---
+
+```{r, echo=TRUE}
+#Load Library
+library(tidyverse)
+library(lubridate)
+
+#Read the CSV
+df <- read.csv("C:\\Users\\msyag\\OneDrive\\Documents\\Intro to Data Science\\train.csv")
+
+#Filter for 2013-2015
+first_years <- df %>%
+    filter(issue_d >= as.Date("2013-01-01") & issue_d <= as.Date("2015-12-31"))
+
+#Save Filtered Data to CSV
+write.csv(first_years, "data_2013_2015.csv", row.names = FALSE)
+
+#Filter data for post-2015
+post_data <- df %>%
+  filter(issue_d >= as.Date("2016-01-01") & issue_d <= as.Date("2018-12-31"))
+
+#Save Filtered Data to CSV
+write.csv(post_data, "data_2016_2018.csv", row.names = FALSE)
+
+```
+
