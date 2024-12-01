@@ -175,92 +175,69 @@ sample_train_df <- handle_class_imbalance(train_df, target_column)
 sample_eval_df <- handle_class_imbalance(eval_df, target_column)
 ```
 
+
+
+
+
 ```{r}
-train_and_evaluate_rf_cv <- function(train_df, eval_df, target_column, ntree, k_folds = 5) {
-  
+train_and_evaluate_rf <- function(train_df, eval_df, target_column, 
+                                   ntree = 100, maxnodes = 50, maxdepth = 10, 
+                                   nodesize = 5, mtry = NULL, 
+                                   sampsize = NULL, classwt = NULL) {
+  # Create formula for the Random Forest model
   formula <- as.formula(paste(target_column, "~ ."))
   
-  set.seed(42)  # For reproducibility
-  train_df <- train_df[sample(nrow(train_df)), ]
-  folds <- cut(seq(1, nrow(train_df)), breaks = k_folds, labels = FALSE)
-  
-  
-  fold_train_accuracies <- c()
-  fold_eval_accuracies <- c()
-  
-  
-  cl <- makeCluster(detectCores() - 1)  # Leave one core free
-  clusterEvalQ(cl, library(randomForest))  # Load randomForest on worker nodes
-  
-  
-  clusterExport(cl, list("formula", "ntree", "target_column"))
-  
-  
-  for (i in 1:k_folds) {
-    cat("Processing Fold", i, "...\n")
-    
-    
-    fold_eval_idx <- which(folds == i, arr.ind = TRUE)
-    fold_train_data <- train_df[-fold_eval_idx, ]
-    fold_eval_data <- train_df[fold_eval_idx, ]
-    
-    
-    clusterExport(cl, list("fold_train_data"), envir = environment())
-    
-    
-    rf_model <- parLapply(cl, list(fold_train_data), function(data) {
-      randomForest(formula, data = data, importance = TRUE, ntree = ntree)
-    })[[1]]
-    
-    
-    fold_train_pred <- predict(rf_model, fold_train_data, type = "response")
-    fold_eval_pred <- predict(rf_model, fold_eval_data, type = "response")
-    
-    fold_train_accuracies <- c(fold_train_accuracies, mean(fold_train_pred == fold_train_data[[target_column]]))
-    fold_eval_accuracies <- c(fold_eval_accuracies, mean(fold_eval_pred == fold_eval_data[[target_column]]))
+  # Set default values for mtry and sampsize if not provided
+  if (is.null(mtry)) {
+    mtry <- sqrt(ncol(train_df) - 1)  # Default mtry as sqrt(number of features)
+  }
+  if (is.null(sampsize)) {
+    sampsize <- nrow(train_df)  # Use all training data for bootstrap sampling
   }
   
+  # Train the Random Forest model
+  rf_model <- randomForest(formula, data = train_df, ntree = ntree, maxnodes = maxnodes,
+                           maxdepth = maxdepth, nodesize = nodesize, mtry = mtry,
+                           sampsize = sampsize, classwt = classwt, importance = TRUE)
   
-  stopCluster(cl)
+  # Print the model
+  print(rf_model)
+  
+  # Predict on train data
+  train_pred <- predict(rf_model, train_df, type = "response")
+  train_accuracy <- mean(train_pred == train_df[[target_column]])
+  
+  # Predict on eval data
+  eval_pred <- predict(rf_model, eval_df, type = "response")
+  eval_accuracy <- mean(eval_pred == eval_df[[target_column]])
+  
+  # Confusion matrices
+  train_confusion_matrix <- table(Predicted = train_pred, Actual = train_df[[target_column]])
+  eval_confusion_matrix <- table(Predicted = eval_pred, Actual = eval_df[[target_column]])
   
   
-  cat("Cross-Validation Average Training Accuracy: ", mean(fold_train_accuracies) * 100, "%\n")
-  cat("Cross-Validation Average Evaluation Accuracy: ", mean(fold_eval_accuracies) * 100, "%\n")
   
-  
-  final_rf_model <- randomForest(formula, data = train_df, importance = TRUE, ntree = ntree)
-  
-  final_train_pred <- predict(final_rf_model, train_df, type = "response")
-  final_eval_pred <- predict(final_rf_model, eval_df, type = "response")
-  
-  final_train_accuracy <- mean(final_train_pred == train_df[[target_column]])
-  final_eval_accuracy <- mean(final_eval_pred == eval_df[[target_column]])
-  
-  cat("Final Model Training Accuracy: ", final_train_accuracy * 100, "%\n")
-  cat("Final Model Evaluation Accuracy: ", final_eval_accuracy * 100, "%\n")
-  
-  # Return results
+  # Return a list containing the results
   return(list(
-    cv_avg_train_accuracy = mean(fold_train_accuracies),
-    cv_avg_eval_accuracy = mean(fold_eval_accuracies),
-    final_train_accuracy = final_train_accuracy,
-    final_eval_accuracy = final_eval_accuracy,
-    model = final_rf_model
+    train_accuracy = train_accuracy,
+    eval_accuracy = eval_accuracy,
+    train_confusion_matrix = train_confusion_matrix,
+    eval_confusion_matrix = eval_confusion_matrix,
+    model = rf_model
   ))
 }
 
-# Example Usage
+# Example usage
 target_column <- "loan_status"
-ntree <- 50
-k_folds <- 10
 
-results <- train_and_evaluate_rf_cv(sample_train_df, sample_eval_df, target_column, ntree, k_folds)
+# Call the function
+results <- train_and_evaluate_rf(sample_train_df, sample_eval_df, target_column)
 
 # Print results
 print(results)
 
-
 ```
+
 
 ```{r}
 
@@ -268,14 +245,14 @@ target_column <- "loan_status"
 sample_train_df <- handle_class_imbalance(train_df, target_column)
 sample_eval_df <- handle_class_imbalance(eval_df, target_column)
 
-ntree_list <- seq(10, 200, by = 10)
+ntree_list <- seq(150, 500, by = 20)
 train_accuracies <- c()
 eval_accuracies <- c()
 
 for (ntree in ntree_list) {
   cat("Training Random Forest with", ntree, "trees...\n")
   # Train model
-  rf_model <- train_and_evaluate_rf_cv(sample_train_df, sample_eval_df, target_column, ntree)
+  rf_model <- train_and_evaluate_rf(sample_train_df, sample_eval_df, target_column, ntree)
   
   # Append accuracies to respective lists
   train_accuracies <- c(train_accuracies, rf_model$train_accuracy)
@@ -303,12 +280,44 @@ ggplot(accuracy_df, aes(x = ntree)) +
 
 ```
 
+```{r}
+target_column <- "loan_status"  
+sample_train_df <- handle_class_imbalance(train_df, target_column)
+sample_eval_df <- handle_class_imbalance(eval_df, target_column)
+
+maxdepth_list <- seq(3, 100, by = 5)
+train_accuracies <- c()
+eval_accuracies <- c()
+
+for (maxdepth in maxdepth_list) {
+  cat("Training Random Forest with", maxdepth, "max depth...\n")
+  # Train model
+  rf_model <- train_and_evaluate_rf(sample_train_df, sample_eval_df, target_column, ntree=120, maxdepth = maxdepth)
+  
+  # Append accuracies to respective lists
+  train_accuracies <- c(train_accuracies, rf_model$train_accuracy)
+  eval_accuracies <- c(eval_accuracies, rf_model$eval_accuracy)
+}
+
+# Create a data frame for plotting
+accuracy_df <- data.frame(
+  maxdepth = maxdepth_list,
+  Train_Accuracy = train_accuracies,
+  Eval_Accuracy = eval_accuracies
+)
 
 
+library(ggplot2)
 
-
-
-
+ggplot(accuracy_df, aes(x = maxdepth)) +
+  geom_line(aes(y = Train_Accuracy, color = "Train Accuracy"), size = 1) +
+  geom_line(aes(y = Eval_Accuracy, color = "Eval Accuracy"), size = 1) +
+  labs(title = "Random Forest Accuracy vs. Max depth",
+       x = "maxdepth",
+       y = "Accuracy (%)") +
+  scale_color_manual(name = "Legend", values = c("Train Accuracy" = "blue", "Eval Accuracy" = "red")) +
+  theme_minimal()
+```
 
 
 
