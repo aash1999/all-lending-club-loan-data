@@ -128,7 +128,7 @@ handle_class_imbalance <- function(df, target_column) {
   
   
   #set.seed(123)  # Setting seed for reproducibility
-  sampled_df <- df %>% sample_n(20000)
+  sampled_df <- df %>% sample_n(50000)
   
   
   class_distribution <- table(sampled_df[[target_column]])
@@ -231,13 +231,86 @@ train_and_evaluate_rf <- function(train_df, eval_df, target_column,
 target_column <- "loan_status"
 
 # Call the function
-results <- train_and_evaluate_rf(sample_train_df, sample_eval_df, target_column)
+results <- train_and_evaluate_rf(train_df, eval_df, target_column, ntree=120, maxdepth = 25, maxnodes = 20, classwt = c("Charged Off" = chareoff_class_wt, "Fully Paid" = fully_paid_class_wt))
 
 # Print results
 print(results)
 
 ```
 
+```{r}
+calculate_metrics <- function(results) {
+  # Extract confusion matrices from results
+  train_conf_matrix <- results$train_confusion_matrix
+  eval_conf_matrix <- results$eval_confusion_matrix
+  
+  # Function to calculate Precision, Recall, and F1-Score for each class
+  calculate_class_metrics <- function(conf_matrix, class) {
+    tp <- conf_matrix[class, class]  # True Positives
+    fn <- conf_matrix[class, -class]  # False Negatives
+    fp <- conf_matrix[-class, class]  # False Positives
+    tn <- sum(conf_matrix) - tp - fn - fp  # True Negatives
+    
+    precision <- tp / (tp + fp)
+    recall <- tp / (tp + fn)
+    f1 <- 2 * (precision * recall) / (precision + recall)
+    
+    return(c(precision, recall, f1))
+  }
+  
+  # Calculate for Charged Off (1) and Fully Paid (2) for both train and eval
+  class_names <- c("Charged Off", "Fully Paid")
+  
+  train_metrics <- sapply(1:2, function(i) calculate_class_metrics(train_conf_matrix, i))
+  eval_metrics <- sapply(1:2, function(i) calculate_class_metrics(eval_conf_matrix, i))
+  
+  # Return results as a list
+  result_list <- list(
+    train_precision_charged_off = train_metrics[1, 1],
+    train_recall_charged_off = train_metrics[2, 1],
+    train_f1_charged_off = train_metrics[3, 1],
+    
+    train_precision_fully_paid = train_metrics[1, 2],
+    train_recall_fully_paid = train_metrics[2, 2],
+    train_f1_fully_paid = train_metrics[3, 2],
+    
+    eval_precision_charged_off = eval_metrics[1, 1],
+    eval_recall_charged_off = eval_metrics[2, 1],
+    eval_f1_charged_off = eval_metrics[3, 1],
+    
+    eval_precision_fully_paid = eval_metrics[1, 2],
+    eval_recall_fully_paid = eval_metrics[2, 2],
+    eval_f1_fully_paid = eval_metrics[3, 2]
+  )
+  
+  return(result_list)
+}
+
+# Example Usage
+metrics <- calculate_metrics(results)
+
+# Print Results
+cat("Train - Charged Off Class:\n")
+cat("Precision: ", metrics$train_precision_charged_off, "\n")
+cat("Recall: ", metrics$train_recall_charged_off, "\n")
+cat("F1: ", metrics$train_f1_charged_off, "\n")
+
+cat("\nTrain - Fully Paid Class:\n")
+cat("Precision: ", metrics$train_precision_fully_paid, "\n")
+cat("Recall: ", metrics$train_recall_fully_paid, "\n")
+cat("F1: ", metrics$train_f1_fully_paid, "\n")
+
+cat("\nEval - Charged Off Class:\n")
+cat("Precision: ", metrics$eval_precision_charged_off, "\n")
+cat("Recall: ", metrics$eval_recall_charged_off, "\n")
+cat("F1: ", metrics$eval_f1_charged_off, "\n")
+
+cat("\nEval - Fully Paid Class:\n")
+cat("Precision: ", metrics$eval_precision_fully_paid, "\n")
+cat("Recall: ", metrics$eval_recall_fully_paid, "\n")
+cat("F1: ", metrics$eval_f1_fully_paid, "\n")
+
+```
 
 ```{r}
 
@@ -325,7 +398,7 @@ target_column <- "loan_status"
 sample_train_df <- handle_class_imbalance(train_df, target_column)
 sample_eval_df <- handle_class_imbalance(eval_df, target_column)
 
-maxnodes_list <- seq(20, 100, by = 5)
+maxnodes_list <- seq(80, 250, by = 5)
 train_accuracies <- c()
 eval_accuracies <- c()
 
@@ -366,15 +439,15 @@ target_column <- "loan_status"
 sample_train_df <- handle_class_imbalance(train_df, target_column)
 sample_eval_df <- handle_class_imbalance(eval_df, target_column)
 
-nodesize_list <- seq(2, 15, by = 1)
+chareoff_class_wt_list <- seq(1, 10, by = 1)
 train_accuracies <- c()
 eval_accuracies <- c()
 
-for (nodesize in nodesize_list) {
-  cat("Training Random Forest with", nodesize, "nodes size...\n")
+for (chareoff_class_wt in chareoff_class_wt_list) {
+  cat("Training Random Forest with", chareoff_class_wt, " chareoff_class_wt...\n")
   # Train model
   rf_model <- train_and_evaluate_rf(sample_train_df, sample_eval_df, target_column, ntree=120, maxdepth = 25,
-                                    maxnodes = 20, nodesize = nodesize)
+                                    maxnodes = 20, classwt = c("Charged Off" = chareoff_class_wt, "Fully Paid" = 1))
   
   # Append accuracies to respective lists
   train_accuracies <- c(train_accuracies, rf_model$train_accuracy)
@@ -383,7 +456,7 @@ for (nodesize in nodesize_list) {
 
 # Create a data frame for plotting
 accuracy_df <- data.frame(
-  nodesize = nodesize_list,
+  chareoff_class_wt = chareoff_class_wt_list,
   Train_Accuracy = train_accuracies,
   Eval_Accuracy = eval_accuracies
 )
@@ -391,21 +464,147 @@ accuracy_df <- data.frame(
 
 library(ggplot2)
 
-ggplot(accuracy_df, aes(x = nodesize)) +
+ggplot(accuracy_df, aes(x = chareoff_class_wt)) +
   geom_line(aes(y = Train_Accuracy, color = "Train Accuracy"), size = 1) +
   geom_line(aes(y = Eval_Accuracy, color = "Eval Accuracy"), size = 1) +
-  labs(title = "Random Forest Accuracy vs. Node Size",
-       x = "nodesize",
+  labs(title = "Random Forest Accuracy vs. chareoff_class_wt",
+       x = "chareoff_class_wt",
        y = "Accuracy (%)") +
   scale_color_manual(name = "Legend", values = c("Train Accuracy" = "blue", "Eval Accuracy" = "red")) +
   theme_minimal()
 ```
 
 
+```{r}
+# Define the class weight lists
+chareoff_class_wt_list <- seq(1, 10, by = 1)
+fully_paid_class_wt_list <- seq(1, 10, by = 1)
 
+# Initialize vectors to store precision and recall values
+train_precision_charged_off <- c()
+eval_precision_charged_off <- c()
+train_recall_charged_off <- c()
+eval_recall_charged_off <- c()
 
+train_precision_fully_paid <- c()
+eval_precision_fully_paid <- c()
+train_recall_fully_paid <- c()
+eval_recall_fully_paid <- c()
 
+# Iterate over all combinations of chareoff_class_wt and fully_paid_class_wt
+for (chareoff_class_wt in chareoff_class_wt_list) {
+  for (fully_paid_class_wt in fully_paid_class_wt_list) {
+    cat("Training Random Forest with Charged Off Weight:", chareoff_class_wt, 
+        " Fully Paid Weight:", fully_paid_class_wt, "...\n")
+    
+    # Train model with the current combination of class weights
+    rf_model <- train_and_evaluate_rf(
+      sample_train_df, sample_eval_df, target_column, 
+      ntree = 120, maxdepth = 25, maxnodes = 20, 
+      classwt = c("Charged Off" = chareoff_class_wt, "Fully Paid" = fully_paid_class_wt)
+    )
+    
+    metrics <- calculate_metrics(rf_model)
 
+    # Print Results
+    cat("Train - Charged Off Class:\n")
+    cat("Precision: ", metrics$train_precision_charged_off, "\n")
+    cat("Recall: ", metrics$train_recall_charged_off, "\n")
+    cat("F1: ", metrics$train_f1_charged_off, "\n")
 
+    # Get precision and recall for Charged Off class (positive class)
+    train_precision_charged_off <- c(train_precision_charged_off, metrics$train_precision_charged_off)
+    eval_precision_charged_off <- c(eval_precision_charged_off, metrics$eval_precision_charged_off)
+    
+    train_recall_charged_off <- c(train_recall_charged_off, metrics$train_recall_charged_off)
+    eval_recall_charged_off <- c(eval_recall_charged_off, metrics$eval_recall_charged_off)
 
+    # Get precision and recall for Fully Paid class (negative class)
+    train_precision_fully_paid <- c(train_precision_fully_paid, metrics$train_precision_fully_paid)
+    eval_precision_fully_paid <- c(eval_precision_fully_paid, metrics$eval_precision_fully_paid)
+    
+    train_recall_fully_paid <- c(train_recall_fully_paid, metrics$train_recall_fully_paid)
+    eval_recall_fully_paid <- c(eval_recall_fully_paid, metrics$eval_recall_fully_paid)
+  }
+}
+
+# Create a data frame for plotting
+plot_data <- data.frame(
+  chareoff_class_wt = rep(chareoff_class_wt_list, each = length(fully_paid_class_wt_list)),
+  fully_paid_class_wt = rep(fully_paid_class_wt_list, times = length(chareoff_class_wt_list)),
+  train_precision_charged_off = train_precision_charged_off,
+  eval_precision_charged_off = eval_precision_charged_off,
+  train_recall_charged_off = train_recall_charged_off,
+  eval_recall_charged_off = eval_recall_charged_off,
+  train_precision_fully_paid = train_precision_fully_paid,
+  eval_precision_fully_paid = eval_precision_fully_paid,
+  train_recall_fully_paid = train_recall_fully_paid,
+  eval_recall_fully_paid = eval_recall_fully_paid
+)
+
+# Create scatter plots using ggplot
+library(ggplot2)
+
+# Plot Precision vs Recall for Charged Off class (Train vs Eval)
+ggplot(plot_data, aes(x = train_recall_charged_off, y = train_precision_charged_off, 
+                     color = as.factor(chareoff_class_wt))) +
+  geom_point() +
+  labs(title = "Train Precision vs Recall for Charged Off (Train)",
+       x = "Recall", y = "Precision") +
+  scale_color_manual(name = "Charged Off Class Weight", values = rainbow(length(chareoff_class_wt_list))) +
+  theme_minimal()
+
+# Plot Precision vs Recall for Fully Paid class (Train vs Eval)
+ggplot(plot_data, aes(x = train_recall_fully_paid, y = train_precision_fully_paid, 
+                     color = as.factor(fully_paid_class_wt))) +
+  geom_point() +
+  labs(title = "Train Precision vs Recall for Fully Paid (Train)",
+       x = "Recall", y = "Precision") +
+  scale_color_manual(name = "Fully Paid Class Weight", values = rainbow(length(fully_paid_class_wt_list))) +
+  theme_minimal()
+
+# Plot Eval Precision vs Recall for Charged Off class
+ggplot(plot_data, aes(x = eval_recall_charged_off, y = eval_precision_charged_off, 
+                     color = as.factor(chareoff_class_wt))) +
+  geom_point() +
+  labs(title = "Eval Precision vs Recall for Charged Off (Eval)",
+       x = "Recall", y = "Precision") +
+  scale_color_manual(name = "Charged Off Class Weight", values = rainbow(length(chareoff_class_wt_list))) +
+  theme_minimal()
+
+# Plot Eval Precision vs Recall for Fully Paid class
+ggplot(plot_data, aes(x = eval_recall_fully_paid, y = eval_precision_fully_paid, 
+                     color = as.factor(fully_paid_class_wt))) +
+  geom_point() +
+  labs(title = "Eval Precision vs Recall for Fully Paid (Eval)",
+       x = "Recall", y = "Precision") +
+  scale_color_manual(name = "Fully Paid Class Weight", values = rainbow(length(fully_paid_class_wt_list))) +
+  theme_minimal()
+
+```
+
+```{r}
+plot_data_melt <- melt(plot_data, id.vars = c("chareoff_class_wt", "fully_paid_class_wt"))
+
+# Heatmap for train_precision_charged_off
+ggplot(plot_data_melt[plot_data_melt$variable == "train_precision_charged_off", ], aes(x = fully_paid_class_wt, y = chareoff_class_wt, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "red", high = "green", mid = "yellow", midpoint = 0.8) +
+  labs(title = "Train Precision for Charged Off Class", x = "Fully Paid Class Weight", y = "Charged Off Class Weight") +
+  theme_minimal()
+
+# Heatmap for eval_precision_charged_off
+ggplot(plot_data_melt[plot_data_melt$variable == "eval_precision_charged_off", ], aes(x = fully_paid_class_wt, y = chareoff_class_wt, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "red", high = "green", mid = "yellow", midpoint = 0.8) +
+  labs(title = "Eval Precision for Charged Off Class", x = "Fully Paid Class Weight", y = "Charged Off Class Weight") +
+  theme_minimal()
+
+# Heatmap for train_recall_charged_off
+ggplot(plot_data_melt[plot_data_melt$variable == "train_recall_charged_off", ], aes(x = fully_paid_class_wt, y = chareoff_class_wt, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "red", high = "green", mid = "yellow", midpoint = 0.8) +
+  labs(title = "Train Recall for Charged Off Class", x = "Fully Paid Class Weight", y = "Charged Off Class Weight") +
+  theme_minimal()
+```
 
