@@ -1,0 +1,253 @@
+---
+title: "Understanding Dataset"
+author: "Singh Sivaram, Aakash"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: hide
+    number_sections: false
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, comment = NA)
+```
+
+```{r init, include=F}
+# include all your packages here
+library(ezids)
+library(data.table)
+library(dplyr)  # For data manipulation
+library(psych)
+```
+```{r}
+# all file paths
+train_df_path = "../DataSet/train.csv"
+eval_df_path = "../DataSet/eval.csv"
+
+train_df = fread(train_df_path)
+eval_df = fread(eval_df_path)
+
+```
+
+## EDA
+
+```{r}
+describe_df <- function(df){
+  print(summary(df))
+  print(describe(df))
+  print(colnames(df))
+  sapply(df, class)
+  missing_percentage <- sapply(df, function(x) sum(is.na(x)) / nrow(df) * 100)
+  missing_percentage_df <- data.frame(Column = names(missing_percentage),
+                                    Missing_Percentage = missing_percentage)
+  print(missing_percentage_df)
+}
+```
+
+
+```{r}
+# Combined function to handle missing values, remove date column, and prepare data
+prepare_and_clean_data <- function(df) {
+  
+  if (inherits(df, "data.table")) {
+    df <- as.data.frame(df)
+  }
+  
+  
+  if (!is.data.frame(df)) {
+    stop("Input is not a dataframe")
+  }
+  
+  
+  if ("issue_d" %in% names(df)) {
+    df <- df[, !(names(df) %in% "issue_d")]
+  }
+  
+  
+  if ("grade" %in% names(df)) {
+    df$grade <- factor(df$grade)
+  }
+  if ("sub_grade" %in% names(df)) {
+    df$sub_grade <- factor(df$sub_grade)
+  }
+  if ("emp_length" %in% names(df)) {
+    df$emp_length <- factor(df$emp_length)
+  }
+  if ("loan_status" %in% names(df)) {
+    df$loan_status <- factor(df$loan_status)
+  }
+  
+  
+  num_cols <- sapply(df, is.numeric)
+  df[, num_cols] <- lapply(df[, num_cols, drop = FALSE], function(col) {
+    col[is.na(col)] <- median(col, na.rm = TRUE)  # Fill NA with median
+    return(col)
+  })
+  
+  
+  factor_cols <- sapply(df, is.factor)
+  df[, factor_cols] <- lapply(df[, factor_cols, drop = FALSE], function(col) {
+    mode <- names(sort(table(col), decreasing = TRUE))[1]  # Calculate mode
+    col[is.na(col)] <- mode  # Fill NA with mode
+    return(col)
+  })
+  
+  
+  return(df)
+}
+
+train_df <- prepare_and_clean_data(train_df)  # Process the data
+eval_df <- prepare_and_clean_data(eval_df)  # Process the data
+
+
+describe_df(train_df)
+
+
+```
+
+```{r}
+# this Takes lot of time to render better skip for now if you are tring the model
+
+library(GGally)
+
+ggpairs(train_df)
+
+
+```
+
+```{r}
+
+library(dplyr)
+
+handle_class_imbalance <- function(df, target_column) {
+  
+  
+  set.seed(123)  # Setting seed for reproducibility
+  sampled_df <- df %>% sample_n(3000)
+  
+  
+  class_distribution <- table(sampled_df[[target_column]])
+  cat("Class distribution in the sampled data before balancing:\n")
+  print(class_distribution)
+  
+  
+  minority_class <- names(sort(class_distribution))[which.min(class_distribution)]  # Identifying minority class
+  majority_class <- names(sort(class_distribution))[which.max(class_distribution)]  # Identifying majority class
+  
+  
+  minority_count <- class_distribution[minority_class]
+  majority_count <- class_distribution[majority_class]
+  
+  
+  if (minority_count < majority_count) {
+    
+    n_oversample <- majority_count - minority_count
+    minority_df <- sampled_df[sampled_df[[target_column]] == minority_class, ]
+    
+    
+    oversampled_minority <- minority_df[sample(1:nrow(minority_df), n_oversample, replace = TRUE), ]
+    
+    
+    balanced_df <- rbind(sampled_df[sampled_df[[target_column]] == majority_class, ], oversampled_minority)
+  } else {
+    
+    balanced_df <- sampled_df
+  }
+  
+  
+  cat("Class distribution in the sampled data after balancing:\n")
+  print(table(balanced_df[[target_column]]))
+  
+  
+  return(balanced_df)
+}
+
+
+target_column <- "loan_status"  
+
+
+sample_train_df <- handle_class_imbalance(train_df, target_column)
+sample_eval_df <- handle_class_imbalance(eval_df, target_column)
+```
+
+```{r}
+
+
+library(randomForest)
+library(parallel)
+
+
+train_and_evaluate_rf <- function(train_df, eval_df, target_column) {
+  
+  formula <- as.formula(paste(target_column, "~ ."))
+  
+  
+  cl <- makeCluster(detectCores() - 1)  # Leave one core free for system tasks
+  
+  
+  clusterExport(cl, list("train_df", "eval_df", "formula", "target_column"))
+  clusterEvalQ(cl, library(randomForest))  # Load randomForest on worker nodes
+  
+  
+  rf_model <- parLapply(cl, list(train_df), function(train_data) {
+    randomForest(formula, data = train_data, importance = TRUE, ntree = 100)
+  })[[1]]  
+  
+  
+  stopCluster(cl)
+  
+  
+  print(rf_model)
+  
+  
+  train_pred <- predict(rf_model, train_df, type = "response")
+  
+  
+  train_accuracy <- mean(train_pred == train_df[[target_column]])
+  cat("Training Accuracy: ", train_accuracy * 100, "%\n")
+  
+  
+  eval_pred <- predict(rf_model, eval_df, type = "response")
+  
+  
+  eval_accuracy <- mean(eval_pred == eval_df[[target_column]])
+  cat("Evaluation Accuracy: ", eval_accuracy * 100, "%\n")
+  
+  return(rf_model)
+}
+
+
+target_column <- "loan_status"  
+
+rf_model <- train_and_evaluate_rf(sample_train_df, sample_eval_df, target_column)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
