@@ -320,11 +320,86 @@ ggplot(accuracy_df, aes(x = maxdepth)) +
 ```
 
 
+```{r}
+target_column <- "loan_status"  
+sample_train_df <- handle_class_imbalance(train_df, target_column)
+sample_eval_df <- handle_class_imbalance(eval_df, target_column)
+
+maxnodes_list <- seq(20, 100, by = 5)
+train_accuracies <- c()
+eval_accuracies <- c()
+
+for (maxnodes in maxnodes_list) {
+  cat("Training Random Forest with", maxnodes, "max nodes...\n")
+  # Train model
+  rf_model <- train_and_evaluate_rf(sample_train_df, sample_eval_df, target_column, ntree=120, maxdepth = 25, maxnodes = maxnodes)
+  
+  # Append accuracies to respective lists
+  train_accuracies <- c(train_accuracies, rf_model$train_accuracy)
+  eval_accuracies <- c(eval_accuracies, rf_model$eval_accuracy)
+}
+
+# Create a data frame for plotting
+accuracy_df <- data.frame(
+  maxnodes = maxnodes_list,
+  Train_Accuracy = train_accuracies,
+  Eval_Accuracy = eval_accuracies
+)
+
+
+library(ggplot2)
+
+ggplot(accuracy_df, aes(x = maxnodes)) +
+  geom_line(aes(y = Train_Accuracy, color = "Train Accuracy"), size = 1) +
+  geom_line(aes(y = Eval_Accuracy, color = "Eval Accuracy"), size = 1) +
+  labs(title = "Random Forest Accuracy vs. Max Nodes",
+       x = "maxnodes",
+       y = "Accuracy (%)") +
+  scale_color_manual(name = "Legend", values = c("Train Accuracy" = "blue", "Eval Accuracy" = "red")) +
+  theme_minimal()
+```
 
 
 
+```{r}
+target_column <- "loan_status"  
+sample_train_df <- handle_class_imbalance(train_df, target_column)
+sample_eval_df <- handle_class_imbalance(eval_df, target_column)
+
+nodesize_list <- seq(2, 15, by = 1)
+train_accuracies <- c()
+eval_accuracies <- c()
+
+for (nodesize in nodesize_list) {
+  cat("Training Random Forest with", nodesize, "nodes size...\n")
+  # Train model
+  rf_model <- train_and_evaluate_rf(sample_train_df, sample_eval_df, target_column, ntree=120, maxdepth = 25,
+                                    maxnodes = 20, nodesize = nodesize)
+  
+  # Append accuracies to respective lists
+  train_accuracies <- c(train_accuracies, rf_model$train_accuracy)
+  eval_accuracies <- c(eval_accuracies, rf_model$eval_accuracy)
+}
+
+# Create a data frame for plotting
+accuracy_df <- data.frame(
+  nodesize = nodesize_list,
+  Train_Accuracy = train_accuracies,
+  Eval_Accuracy = eval_accuracies
+)
 
 
+library(ggplot2)
+
+ggplot(accuracy_df, aes(x = nodesize)) +
+  geom_line(aes(y = Train_Accuracy, color = "Train Accuracy"), size = 1) +
+  geom_line(aes(y = Eval_Accuracy, color = "Eval Accuracy"), size = 1) +
+  labs(title = "Random Forest Accuracy vs. Node Size",
+       x = "nodesize",
+       y = "Accuracy (%)") +
+  scale_color_manual(name = "Legend", values = c("Train Accuracy" = "blue", "Eval Accuracy" = "red")) +
+  theme_minimal()
+```
 
 
 
