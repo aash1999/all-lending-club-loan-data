@@ -1,5 +1,5 @@
 ---
-title: "Understanding Dataset"
+title: "Model Building"
 author: "Singh Sivaram, Aakash"
 date: "`r Sys.Date()`"
 output:
@@ -18,53 +18,60 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, comment = N
 ```
 
 ```{r init, include=F}
-# include all your packages here
 library(ezids)
 library(data.table)
-library(dplyr)  # For data manipulation
+library(dplyr)
 library(psych)
+library(dplyr)
+library(randomForest)
+library(ggplot2)
+
 ```
+
 ```{r}
-# all file paths
 train_df_path = "../DataSet/train.csv"
 eval_df_path = "../DataSet/eval.csv"
 test_df_path = "../DataSet/test.csv"
+predict_df_path = "../DataSet/predict.csv"
 
 train_df = fread(train_df_path)
 eval_df = fread(eval_df_path)
 test_df = fread(test_df_path)
+predict_df = fread(predict_df_path)
+
+target_column <- "loan_status"  
 
 ```
 
+## Class Distribution
+
+
 ```{r}
-# Load required libraries
-library(ggplot2)
 
-# Count the number of "Charged Off" and "Fully Paid" loans
-loan_status_counts <- table(test_df$loan_status)
+loan_status_counts <- table(train_df$loan_status)
 
-# Calculate percentages
+
 loan_status_percentages <- round(100 * loan_status_counts / sum(loan_status_counts), 1)
 
-# Create a data frame for plotting
 loan_status_df <- data.frame(
   status = names(loan_status_counts),
   count = as.numeric(loan_status_counts),
   percentage = loan_status_percentages
 )
 
-# Plot the pie chart using ggplot2
+
 ggplot(loan_status_df, aes(x = "", y = count, fill = status)) +
   geom_bar(stat = "identity", width = 1) +
-  coord_polar(theta = "y") +  # This transforms the bar chart into a pie chart
+  coord_polar(theta = "y") +  
   labs(title = "Distribution of Charged Off vs Fully Paid Loans") +
-  theme_void() +  # Remove axis labels for a clean pie chart
-  scale_fill_manual(values = c("Charged Off" = "red", "Fully Paid" = "green")) +  # Customize colors
+  theme_void() +  
+  scale_fill_manual(values = c("Charged Off" = "red", "Fully Paid" = "green")) +
   geom_text(aes(label = paste0(loan_status_df$percentage, "%")), position = position_stack(vjust = 0.5))  # Add percentages
 
 
 ```
-## EDA
+
+## Prepare Data
 
 ```{r}
 describe_df <- function(df){
@@ -77,27 +84,25 @@ describe_df <- function(df){
                                     Missing_Percentage = missing_percentage)
   print(missing_percentage_df)
 }
-```
 
-
-```{r}
-# Combined function to handle missing values, remove date column, and prepare data
 prepare_and_clean_data <- function(df) {
   
   if (inherits(df, "data.table")) {
     df <- as.data.frame(df)
   }
   
-  
   if (!is.data.frame(df)) {
     stop("Input is not a dataframe")
   }
   
+  if ("loan_status" %in% names(df)) {
+    df <- df[!is.na(df$loan_status), ]
+    df$loan_status <- factor(df$loan_status)
+  }
   
   if ("issue_d" %in% names(df)) {
     df <- df[, !(names(df) %in% "issue_d")]
   }
-  
   
   if ("grade" %in% names(df)) {
     df$grade <- factor(df$grade)
@@ -108,64 +113,48 @@ prepare_and_clean_data <- function(df) {
   if ("emp_length" %in% names(df)) {
     df$emp_length <- factor(df$emp_length)
   }
-  if ("loan_status" %in% names(df)) {
-    df$loan_status <- factor(df$loan_status)
-  }
-  
   
   num_cols <- sapply(df, is.numeric)
   df[, num_cols] <- lapply(df[, num_cols, drop = FALSE], function(col) {
-    col[is.na(col)] <- median(col, na.rm = TRUE)  # Fill NA with median
+    col[is.na(col)] <- median(col, na.rm = TRUE)  
     return(col)
   })
-  
   
   factor_cols <- sapply(df, is.factor)
   df[, factor_cols] <- lapply(df[, factor_cols, drop = FALSE], function(col) {
-    mode <- names(sort(table(col), decreasing = TRUE))[1]  # Calculate mode
-    col[is.na(col)] <- mode  # Fill NA with mode
+    mode <- names(sort(table(col), decreasing = TRUE))[1]  
+    col[is.na(col)] <- mode  
     return(col)
   })
-  
   
   return(df)
 }
 
-train_df <- prepare_and_clean_data(train_df)  # Process the data
-eval_df <- prepare_and_clean_data(eval_df)  # Process the data
+
+train_df <- prepare_and_clean_data(train_df)  
+eval_df <- prepare_and_clean_data(eval_df)
 test_df <- prepare_and_clean_data(test_df) 
+predict_df <- prepare_and_clean_data(predict_df)
 
 describe_df(train_df)
 
 
 ```
 
-```{r}
-# this Takes lot of time to render better skip for now if you are tring the model
-
-library(GGally)
-
-ggpairs(train_df)
-
-
-```
+## Fetch N Random Observations 
 
 ```{r}
-
-library(dplyr)
 
 handle_class_imbalance <- function(df, target_column) {
   
-  
-  #set.seed(123)  # Setting seed for reproducibility
   sampled_df <- df %>% sample_n(1000)
   
   
   class_distribution <- table(sampled_df[[target_column]])
   
   
-  minority_class <- names(sort(class_distribution))[which.min(class_distribution)]  # Identifying minority class
-  majority_class <- names(sort(class_distribution))[which.max(class_distribution)]  # Identifying majority class
+  minority_class <- names(sort(class_distribution))[which.min(class_distribution)]  
+  majority_class <- names(sort(class_distribution))[which.max(class_distribution)]  
   
   
   minority_count <- class_distribution[minority_class]
@@ -187,63 +176,52 @@ handle_class_imbalance <- function(df, target_column) {
     balanced_df <- sampled_df
   }
   
-  
-  
-  
   return(balanced_df)
 }
 
 
-target_column <- "loan_status"  
-
-
-sample_train_df <- handle_class_imbalance(train_df, target_column)
-sample_eval_df <- handle_class_imbalance(eval_df, target_column)
 
 ```
 
-
-
-
+## Build Random Forest Model
 
 ```{r}
-library(randomForest)
+
 train_and_evaluate_rf <- function(train_df, eval_df, target_column, 
                                    ntree = 100, maxnodes = 50, maxdepth = 10, 
                                    nodesize = 5, mtry = NULL, 
                                    sampsize = NULL, classwt = NULL) {
-  # Create formula for the Random Forest model
+  
   formula <- as.formula(paste(target_column, "~ ."))
   
-  # Set default values for mtry and sampsize if not provided
+  
   if (is.null(mtry)) {
-    mtry <- sqrt(ncol(train_df) - 1)  # Default mtry as sqrt(number of features)
+    mtry <- sqrt(ncol(train_df) - 1)
   }
   if (is.null(sampsize)) {
-    sampsize <- nrow(train_df)  # Use all training data for bootstrap sampling
+    sampsize <- nrow(train_df)
   }
   
-  # Train the Random Forest model
   rf_model <- randomForest(formula, data = train_df, ntree = ntree, maxnodes = maxnodes,
                            maxdepth = maxdepth, nodesize = nodesize, mtry = mtry,
                            sampsize = sampsize, classwt = classwt, importance = TRUE)
   
   
-  # Predict on train data
+  
   train_pred <- predict(rf_model, train_df, type = "response")
   train_accuracy <- mean(train_pred == train_df[[target_column]])
   
-  # Predict on eval data
+  
   eval_pred <- predict(rf_model, eval_df, type = "response")
   eval_accuracy <- mean(eval_pred == eval_df[[target_column]])
   
-  # Confusion matrices
+  
   train_confusion_matrix <- table(Predicted = train_pred, Actual = train_df[[target_column]])
   eval_confusion_matrix <- table(Predicted = eval_pred, Actual = eval_df[[target_column]])
   
   
   
-  # Return a list containing the results
+  
   return(list(
     train_accuracy = train_accuracy,
     eval_accuracy = eval_accuracy,
@@ -253,60 +231,8 @@ train_and_evaluate_rf <- function(train_df, eval_df, target_column,
   ))
 }
 
-# Example usage
-target_column <- "loan_status"
-
-# Call the function
-results <- train_and_evaluate_rf(train_df, eval_df, target_column, ntree=120, maxdepth = 25, maxnodes = 20)
-
-# Print results
-print(results)
 
 ```
-
-
-
-
-
-```{r}
-# Load necessary libraries
-library(ggplot2)
-
-# Set the number of iterations
-N <- 10000
-accuracies <- numeric(N)  # Pre-allocate a numeric vector to store the accuracy values
-
-# Define a function to calculate the accuracy for "Charged Off"
-calculate_accuracy <- function(model, sample_data) {
-  # Make predictions
-  predictions <- predict(model, sample_data, type = "response")
-  
-  # Calculate accuracy for the "Charged Off" class
-  true_labels <- sample_data$loan_status
-  charged_off_accuracy <- mean(predictions == true_labels)
-  
-  return(charged_off_accuracy)
-}
-
-# Loop to run the process N times
-for (i in 1:N) {
-  sample_test_df <- handle_class_imbalance(test_df, "loan_status")  # Make sure this function is defined
-  
-  # Calculate accuracy for the "Charged Off" class
-  accuracy <- calculate_accuracy(results$model, sample_test_df)
-  
-  # Store the accuracy
-  accuracies[i] <- accuracy
-}
-
-# Plot histogram of accuracies
-ggplot(data.frame(accuracy = accuracies), aes(x = accuracy)) +
-  geom_histogram(binwidth = 0.001, fill = "skyblue", color = "black", alpha = 0.7) +
-  labs(title = "Histogram of Charged Off Accuracy", x = "Accuracy", y = "Frequency") +
-  theme_minimal()
-```
-
-
 
 
 
@@ -358,31 +284,10 @@ calculate_metrics <- function(results) {
   return(result_list)
 }
 
-# Example Usage
-metrics <- calculate_metrics(results)
-
-# Print Results
-cat("Train - Charged Off Class:\n")
-cat("Precision: ", metrics$train_precision_charged_off, "\n")
-cat("Recall: ", metrics$train_recall_charged_off, "\n")
-cat("F1: ", metrics$train_f1_charged_off, "\n")
-
-cat("\nTrain - Fully Paid Class:\n")
-cat("Precision: ", metrics$train_precision_fully_paid, "\n")
-cat("Recall: ", metrics$train_recall_fully_paid, "\n")
-cat("F1: ", metrics$train_f1_fully_paid, "\n")
-
-cat("\nEval - Charged Off Class:\n")
-cat("Precision: ", metrics$eval_precision_charged_off, "\n")
-cat("Recall: ", metrics$eval_recall_charged_off, "\n")
-cat("F1: ", metrics$eval_f1_charged_off, "\n")
-
-cat("\nEval - Fully Paid Class:\n")
-cat("Precision: ", metrics$eval_precision_fully_paid, "\n")
-cat("Recall: ", metrics$eval_recall_fully_paid, "\n")
-cat("F1: ", metrics$eval_f1_fully_paid, "\n")
 
 ```
+
+## Hyper Parameter Tuning
 
 ```{r}
 
@@ -540,7 +445,7 @@ ggplot(accuracy_df, aes(x = chareoff_class_wt)) +
   geom_line(aes(y = Train_Accuracy, color = "Train Accuracy"), size = 1) +
   geom_line(aes(y = Eval_Accuracy, color = "Eval Accuracy"), size = 1) +
   labs(title = "Random Forest Accuracy vs. chareoff_class_wt",
-       x = "chareoff_class_wt",
+       x = "chargeoff_class_wt",
        y = "Accuracy (%)") +
   scale_color_manual(name = "Legend", values = c("Train Accuracy" = "blue", "Eval Accuracy" = "red")) +
   theme_minimal()
@@ -655,51 +560,107 @@ ggplot(plot_data, aes(x = eval_recall_fully_paid, y = eval_precision_fully_paid,
 
 ```
 
+
+## Train Model on Whole Train Dataset
+
 ```{r}
-plot_data_melt <- melt(plot_data, id.vars = c("chareoff_class_wt", "fully_paid_class_wt"))
+final_results <- train_and_evaluate_rf(train_df, eval_df, target_column, ntree=120, maxdepth = 25, maxnodes = 20)
+print(final_results)
 
-# Heatmap for train_precision_charged_off
-ggplot(plot_data_melt[plot_data_melt$variable == "train_precision_charged_off", ], aes(x = fully_paid_class_wt, y = chareoff_class_wt, fill = value)) +
-  geom_tile() +
-  scale_fill_gradient2(low = "red", high = "green", mid = "yellow", midpoint = 0.8) +
-  labs(title = "Train Precision for Charged Off Class", x = "Fully Paid Class Weight", y = "Charged Off Class Weight") +
-  theme_minimal()
+metrics <- calculate_metrics(final_results)
 
-# Heatmap for train_recall_charged_off
-ggplot(plot_data_melt[plot_data_melt$variable == "train_recall_charged_off", ], aes(x = fully_paid_class_wt, y = chareoff_class_wt, fill = value)) +
-  geom_tile() +
-  scale_fill_gradient2(low = "red", high = "green", mid = "yellow", midpoint = 0.8) +
-  labs(title = "Train Recall for Charged Off Class", x = "Fully Paid Class Weight", y = "Charged Off Class Weight") +
-  theme_minimal()
+# Print Results
+cat("Train - Charged Off Class:\n")
+cat("Precision: ", metrics$train_precision_charged_off, "\n")
+cat("Recall: ", metrics$train_recall_charged_off, "\n")
+cat("F1: ", metrics$train_f1_charged_off, "\n")
 
-# Heatmap for eval_precision_charged_off
-ggplot(plot_data_melt[plot_data_melt$variable == "eval_precision_charged_off", ], aes(x = fully_paid_class_wt, y = chareoff_class_wt, fill = value)) +
-  geom_tile() +
-  scale_fill_gradient2(low = "red", high = "green", mid = "yellow", midpoint = 0.8) +
-  labs(title = "Eval Precision for Charged Off Class", x = "Fully Paid Class Weight", y = "Charged Off Class Weight") +
-  theme_minimal()
+cat("\nTrain - Fully Paid Class:\n")
+cat("Precision: ", metrics$train_precision_fully_paid, "\n")
+cat("Recall: ", metrics$train_recall_fully_paid, "\n")
+cat("F1: ", metrics$train_f1_fully_paid, "\n")
 
+cat("\nEval - Charged Off Class:\n")
+cat("Precision: ", metrics$eval_precision_charged_off, "\n")
+cat("Recall: ", metrics$eval_recall_charged_off, "\n")
+cat("F1: ", metrics$eval_f1_charged_off, "\n")
+
+cat("\nEval - Fully Paid Class:\n")
+cat("Precision: ", metrics$eval_precision_fully_paid, "\n")
+cat("Recall: ", metrics$eval_recall_fully_paid, "\n")
+cat("F1: ", metrics$eval_f1_fully_paid, "\n")
 
 ```
+## Test Accuracy 
+
 ```{r}
-# Assuming `plot_data` is your dataframe with the necessary columns
+# Load necessary libraries
+library(ggplot2)
 
-# Step 1: Compute a weighted score for each row based on precision and recall.
-# You can assign different weights to precision and recall based on their importance.
-# For example, we can give a 50-50 weight to both precision and recall.
+# Set the number of iterations
+N <- 10000
+accuracies <- numeric(N)  # Pre-allocate a numeric vector to store the accuracy values
 
-plot_data$precision_recall_score <- 0.7 * (plot_data$eval_recall_charged_off) + 0.3 * (plot_data$eval_precision_fully_paid)
+# Define a function to calculate the accuracy for "Charged Off"
+calculate_accuracy <- function(model, sample_data) {
+  # Make predictions
+  predictions <- predict(model, sample_data, type = "response")
+  
+  # Calculate accuracy for the "Charged Off" class
+  true_labels <- sample_data$loan_status
+  charged_off_accuracy <- mean(predictions == true_labels)
+  
+  return(charged_off_accuracy)
+}
+
+# Loop to run the process N times
+for (i in 1:N) {
+  sample_test_df <- handle_class_imbalance(test_df, "loan_status")  # Make sure this function is defined
+  
+  # Calculate accuracy for the "Charged Off" class
+  accuracy <- calculate_accuracy(final_results$model, sample_test_df)
+  
+  # Store the accuracy
+  accuracies[i] <- accuracy
+}
+
+# Plot histogram of accuracies
+ggplot(data.frame(accuracy = accuracies), aes(x = accuracy)) +
+  geom_histogram(binwidth = 0.001, fill = "skyblue", color = "black", alpha = 0.7) +
+  labs(title = "Histogram of Charged Off Accuracy", x = "Accuracy", y = "Frequency") +
+  theme_minimal()
+```
 
 
-# Step 2: Find the row with the highest weighted score.
-optimal_row <- plot_data[which.max(plot_data$precision_recall_score), ]
 
-# Step 3: Extract the optimal class weights
-optimal_charged_off_class_wt <- optimal_row$chareoff_class_wt
-optimal_fully_paid_class_wt <- optimal_row$fully_paid_class_wt
 
-# Step 4: Print the optimal class weights
-cat("Optimal Charged Off Class Weight: ", optimal_charged_off_class_wt, "\n")
-cat("Optimal Fully Paid Class Weight: ", optimal_fully_paid_class_wt, "\n")
+## Predict
+
+```{r}
+# Function to calculate predictions for "Charged Off" and "Fully Paid"
+calculate_loan_outcomes <- function(model, predict_df) {
+  # Make predictions
+  predictions <- predict(model, predict_df, type = "response")
+  
+  # Count the number of people predicted to "Charge Off" and "Pay Fully"
+  outcome_counts <- table(predictions)
+  
+  # Extract counts for "Charged Off" and "Fully Paid" (adjust these levels as per your dataset)
+  charged_off_count <- if ("Charged Off" %in% names(outcome_counts)) outcome_counts["Charged Off"] else 0
+  fully_paid_count <- if ("Fully Paid" %in% names(outcome_counts)) outcome_counts["Fully Paid"] else 0
+  
+  # Return the results as a named list
+  return(list(
+    Charged_Off = charged_off_count,
+    Fully_Paid = fully_paid_count
+  ))
+}
+
+# Example usage
+results <- calculate_loan_outcomes(final_results$model, predict_df)
+
+# Print the results
+cat("Total Charged Off:", results$Charged_Off, "\n")
+cat("Total Fully Paid:", results$Fully_Paid, "\n")
 
 ```
