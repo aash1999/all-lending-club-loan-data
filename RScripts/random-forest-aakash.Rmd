@@ -28,12 +28,42 @@ library(psych)
 # all file paths
 train_df_path = "../DataSet/train.csv"
 eval_df_path = "../DataSet/eval.csv"
+test_df_path = "../DataSet/test.csv"
 
 train_df = fread(train_df_path)
 eval_df = fread(eval_df_path)
+test_df = fread(test_df_path)
 
 ```
 
+```{r}
+# Load required libraries
+library(ggplot2)
+
+# Count the number of "Charged Off" and "Fully Paid" loans
+loan_status_counts <- table(test_df$loan_status)
+
+# Calculate percentages
+loan_status_percentages <- round(100 * loan_status_counts / sum(loan_status_counts), 1)
+
+# Create a data frame for plotting
+loan_status_df <- data.frame(
+  status = names(loan_status_counts),
+  count = as.numeric(loan_status_counts),
+  percentage = loan_status_percentages
+)
+
+# Plot the pie chart using ggplot2
+ggplot(loan_status_df, aes(x = "", y = count, fill = status)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +  # This transforms the bar chart into a pie chart
+  labs(title = "Distribution of Charged Off vs Fully Paid Loans") +
+  theme_void() +  # Remove axis labels for a clean pie chart
+  scale_fill_manual(values = c("Charged Off" = "red", "Fully Paid" = "green")) +  # Customize colors
+  geom_text(aes(label = paste0(loan_status_df$percentage, "%")), position = position_stack(vjust = 0.5))  # Add percentages
+
+
+```
 ## EDA
 
 ```{r}
@@ -103,7 +133,7 @@ prepare_and_clean_data <- function(df) {
 
 train_df <- prepare_and_clean_data(train_df)  # Process the data
 eval_df <- prepare_and_clean_data(eval_df)  # Process the data
-
+test_df <- prepare_and_clean_data(test_df) 
 
 describe_df(train_df)
 
@@ -128,12 +158,10 @@ handle_class_imbalance <- function(df, target_column) {
   
   
   #set.seed(123)  # Setting seed for reproducibility
-  sampled_df <- df %>% sample_n(50000)
+  sampled_df <- df %>% sample_n(1000)
   
   
   class_distribution <- table(sampled_df[[target_column]])
-  cat("Class distribution in the sampled data before balancing:\n")
-  print(class_distribution)
   
   
   minority_class <- names(sort(class_distribution))[which.min(class_distribution)]  # Identifying minority class
@@ -160,8 +188,6 @@ handle_class_imbalance <- function(df, target_column) {
   }
   
   
-  cat("Class distribution in the sampled data after balancing:\n")
-  print(table(balanced_df[[target_column]]))
   
   
   return(balanced_df)
@@ -173,6 +199,7 @@ target_column <- "loan_status"
 
 sample_train_df <- handle_class_imbalance(train_df, target_column)
 sample_eval_df <- handle_class_imbalance(eval_df, target_column)
+
 ```
 
 
@@ -180,6 +207,7 @@ sample_eval_df <- handle_class_imbalance(eval_df, target_column)
 
 
 ```{r}
+library(randomForest)
 train_and_evaluate_rf <- function(train_df, eval_df, target_column, 
                                    ntree = 100, maxnodes = 50, maxdepth = 10, 
                                    nodesize = 5, mtry = NULL, 
@@ -200,8 +228,6 @@ train_and_evaluate_rf <- function(train_df, eval_df, target_column,
                            maxdepth = maxdepth, nodesize = nodesize, mtry = mtry,
                            sampsize = sampsize, classwt = classwt, importance = TRUE)
   
-  # Print the model
-  print(rf_model)
   
   # Predict on train data
   train_pred <- predict(rf_model, train_df, type = "response")
@@ -231,12 +257,58 @@ train_and_evaluate_rf <- function(train_df, eval_df, target_column,
 target_column <- "loan_status"
 
 # Call the function
-results <- train_and_evaluate_rf(train_df, eval_df, target_column, ntree=120, maxdepth = 25, maxnodes = 20, classwt = c("Charged Off" = chareoff_class_wt, "Fully Paid" = fully_paid_class_wt))
+results <- train_and_evaluate_rf(train_df, eval_df, target_column, ntree=120, maxdepth = 25, maxnodes = 20)
 
 # Print results
 print(results)
 
 ```
+
+
+
+
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+
+# Set the number of iterations
+N <- 10000
+accuracies <- numeric(N)  # Pre-allocate a numeric vector to store the accuracy values
+
+# Define a function to calculate the accuracy for "Charged Off"
+calculate_accuracy <- function(model, sample_data) {
+  # Make predictions
+  predictions <- predict(model, sample_data, type = "response")
+  
+  # Calculate accuracy for the "Charged Off" class
+  true_labels <- sample_data$loan_status
+  charged_off_accuracy <- mean(predictions == true_labels)
+  
+  return(charged_off_accuracy)
+}
+
+# Loop to run the process N times
+for (i in 1:N) {
+  sample_test_df <- handle_class_imbalance(test_df, "loan_status")  # Make sure this function is defined
+  
+  # Calculate accuracy for the "Charged Off" class
+  accuracy <- calculate_accuracy(results$model, sample_test_df)
+  
+  # Store the accuracy
+  accuracies[i] <- accuracy
+}
+
+# Plot histogram of accuracies
+ggplot(data.frame(accuracy = accuracies), aes(x = accuracy)) +
+  geom_histogram(binwidth = 0.001, fill = "skyblue", color = "black", alpha = 0.7) +
+  labs(title = "Histogram of Charged Off Accuracy", x = "Accuracy", y = "Frequency") +
+  theme_minimal()
+```
+
+
+
+
 
 ```{r}
 calculate_metrics <- function(results) {
@@ -593,6 +665,13 @@ ggplot(plot_data_melt[plot_data_melt$variable == "train_precision_charged_off", 
   labs(title = "Train Precision for Charged Off Class", x = "Fully Paid Class Weight", y = "Charged Off Class Weight") +
   theme_minimal()
 
+# Heatmap for train_recall_charged_off
+ggplot(plot_data_melt[plot_data_melt$variable == "train_recall_charged_off", ], aes(x = fully_paid_class_wt, y = chareoff_class_wt, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "red", high = "green", mid = "yellow", midpoint = 0.8) +
+  labs(title = "Train Recall for Charged Off Class", x = "Fully Paid Class Weight", y = "Charged Off Class Weight") +
+  theme_minimal()
+
 # Heatmap for eval_precision_charged_off
 ggplot(plot_data_melt[plot_data_melt$variable == "eval_precision_charged_off", ], aes(x = fully_paid_class_wt, y = chareoff_class_wt, fill = value)) +
   geom_tile() +
@@ -600,11 +679,27 @@ ggplot(plot_data_melt[plot_data_melt$variable == "eval_precision_charged_off", ]
   labs(title = "Eval Precision for Charged Off Class", x = "Fully Paid Class Weight", y = "Charged Off Class Weight") +
   theme_minimal()
 
-# Heatmap for train_recall_charged_off
-ggplot(plot_data_melt[plot_data_melt$variable == "train_recall_charged_off", ], aes(x = fully_paid_class_wt, y = chareoff_class_wt, fill = value)) +
-  geom_tile() +
-  scale_fill_gradient2(low = "red", high = "green", mid = "yellow", midpoint = 0.8) +
-  labs(title = "Train Recall for Charged Off Class", x = "Fully Paid Class Weight", y = "Charged Off Class Weight") +
-  theme_minimal()
-```
 
+```
+```{r}
+# Assuming `plot_data` is your dataframe with the necessary columns
+
+# Step 1: Compute a weighted score for each row based on precision and recall.
+# You can assign different weights to precision and recall based on their importance.
+# For example, we can give a 50-50 weight to both precision and recall.
+
+plot_data$precision_recall_score <- 0.7 * (plot_data$eval_recall_charged_off) + 0.3 * (plot_data$eval_precision_fully_paid)
+
+
+# Step 2: Find the row with the highest weighted score.
+optimal_row <- plot_data[which.max(plot_data$precision_recall_score), ]
+
+# Step 3: Extract the optimal class weights
+optimal_charged_off_class_wt <- optimal_row$chareoff_class_wt
+optimal_fully_paid_class_wt <- optimal_row$fully_paid_class_wt
+
+# Step 4: Print the optimal class weights
+cat("Optimal Charged Off Class Weight: ", optimal_charged_off_class_wt, "\n")
+cat("Optimal Fully Paid Class Weight: ", optimal_fully_paid_class_wt, "\n")
+
+```
