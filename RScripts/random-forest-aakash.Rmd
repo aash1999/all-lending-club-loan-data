@@ -238,11 +238,11 @@ train_and_evaluate_rf <- function(train_df, eval_df, target_column,
 
 ```{r}
 calculate_metrics <- function(results) {
-  # Extract confusion matrices from results
+  
   train_conf_matrix <- results$train_confusion_matrix
   eval_conf_matrix <- results$eval_confusion_matrix
   
-  # Function to calculate Precision, Recall, and F1-Score for each class
+  
   calculate_class_metrics <- function(conf_matrix, class) {
     tp <- conf_matrix[class, class]  # True Positives
     fn <- conf_matrix[class, -class]  # False Negatives
@@ -256,13 +256,13 @@ calculate_metrics <- function(results) {
     return(c(precision, recall, f1))
   }
   
-  # Calculate for Charged Off (1) and Fully Paid (2) for both train and eval
+  
   class_names <- c("Charged Off", "Fully Paid")
   
   train_metrics <- sapply(1:2, function(i) calculate_class_metrics(train_conf_matrix, i))
   eval_metrics <- sapply(1:2, function(i) calculate_class_metrics(eval_conf_matrix, i))
   
-  # Return results as a list
+  
   result_list <- list(
     train_precision_charged_off = train_metrics[1, 1],
     train_recall_charged_off = train_metrics[2, 1],
@@ -301,15 +301,15 @@ eval_accuracies <- c()
 
 for (ntree in ntree_list) {
   cat("Training Random Forest with", ntree, "trees...\n")
-  # Train model
+  
   rf_model <- train_and_evaluate_rf(sample_train_df, sample_eval_df, target_column, ntree)
   
-  # Append accuracies to respective lists
+  
   train_accuracies <- c(train_accuracies, rf_model$train_accuracy)
   eval_accuracies <- c(eval_accuracies, rf_model$eval_accuracy)
 }
 
-# Create a data frame for plotting
+
 accuracy_df <- data.frame(
   ntree = ntree_list,
   Train_Accuracy = train_accuracies,
@@ -341,15 +341,15 @@ eval_accuracies <- c()
 
 for (maxdepth in maxdepth_list) {
   cat("Training Random Forest with", maxdepth, "max depth...\n")
-  # Train model
+  
   rf_model <- train_and_evaluate_rf(sample_train_df, sample_eval_df, target_column, ntree=120, maxdepth = maxdepth)
   
-  # Append accuracies to respective lists
+  
   train_accuracies <- c(train_accuracies, rf_model$train_accuracy)
   eval_accuracies <- c(eval_accuracies, rf_model$eval_accuracy)
 }
 
-# Create a data frame for plotting
+
 accuracy_df <- data.frame(
   maxdepth = maxdepth_list,
   Train_Accuracy = train_accuracies,
@@ -381,15 +381,13 @@ eval_accuracies <- c()
 
 for (maxnodes in maxnodes_list) {
   cat("Training Random Forest with", maxnodes, "max nodes...\n")
-  # Train model
+  
   rf_model <- train_and_evaluate_rf(sample_train_df, sample_eval_df, target_column, ntree=120, maxdepth = 25, maxnodes = maxnodes)
   
-  # Append accuracies to respective lists
   train_accuracies <- c(train_accuracies, rf_model$train_accuracy)
   eval_accuracies <- c(eval_accuracies, rf_model$eval_accuracy)
 }
 
-# Create a data frame for plotting
 accuracy_df <- data.frame(
   maxnodes = maxnodes_list,
   Train_Accuracy = train_accuracies,
@@ -422,16 +420,16 @@ eval_accuracies <- c()
 
 for (chareoff_class_wt in chareoff_class_wt_list) {
   cat("Training Random Forest with", chareoff_class_wt, " chareoff_class_wt...\n")
-  # Train model
+  
   rf_model <- train_and_evaluate_rf(sample_train_df, sample_eval_df, target_column, ntree=120, maxdepth = 25,
                                     maxnodes = 20, classwt = c("Charged Off" = chareoff_class_wt, "Fully Paid" = 1))
   
-  # Append accuracies to respective lists
+  
   train_accuracies <- c(train_accuracies, rf_model$train_accuracy)
   eval_accuracies <- c(eval_accuracies, rf_model$eval_accuracy)
 }
 
-# Create a data frame for plotting
+
 accuracy_df <- data.frame(
   chareoff_class_wt = chareoff_class_wt_list,
   Train_Accuracy = train_accuracies,
@@ -453,11 +451,10 @@ ggplot(accuracy_df, aes(x = chareoff_class_wt)) +
 
 
 ```{r}
-# Define the class weight lists
+
 chareoff_class_wt_list <- seq(1, 10, by = 1)
 fully_paid_class_wt_list <- seq(1, 10, by = 1)
 
-# Initialize vectors to store precision and recall values
 train_precision_charged_off <- c()
 eval_precision_charged_off <- c()
 train_recall_charged_off <- c()
@@ -468,13 +465,13 @@ eval_precision_fully_paid <- c()
 train_recall_fully_paid <- c()
 eval_recall_fully_paid <- c()
 
-# Iterate over all combinations of chareoff_class_wt and fully_paid_class_wt
+
 for (chareoff_class_wt in chareoff_class_wt_list) {
   for (fully_paid_class_wt in fully_paid_class_wt_list) {
     cat("Training Random Forest with Charged Off Weight:", chareoff_class_wt, 
         " Fully Paid Weight:", fully_paid_class_wt, "...\n")
     
-    # Train model with the current combination of class weights
+    
     rf_model <- train_and_evaluate_rf(
       sample_train_df, sample_eval_df, target_column, 
       ntree = 120, maxdepth = 25, maxnodes = 20, 
@@ -483,20 +480,20 @@ for (chareoff_class_wt in chareoff_class_wt_list) {
     
     metrics <- calculate_metrics(rf_model)
 
-    # Print Results
+    
     cat("Train - Charged Off Class:\n")
     cat("Precision: ", metrics$train_precision_charged_off, "\n")
     cat("Recall: ", metrics$train_recall_charged_off, "\n")
     cat("F1: ", metrics$train_f1_charged_off, "\n")
 
-    # Get precision and recall for Charged Off class (positive class)
+    
     train_precision_charged_off <- c(train_precision_charged_off, metrics$train_precision_charged_off)
     eval_precision_charged_off <- c(eval_precision_charged_off, metrics$eval_precision_charged_off)
     
     train_recall_charged_off <- c(train_recall_charged_off, metrics$train_recall_charged_off)
     eval_recall_charged_off <- c(eval_recall_charged_off, metrics$eval_recall_charged_off)
 
-    # Get precision and recall for Fully Paid class (negative class)
+    
     train_precision_fully_paid <- c(train_precision_fully_paid, metrics$train_precision_fully_paid)
     eval_precision_fully_paid <- c(eval_precision_fully_paid, metrics$eval_precision_fully_paid)
     
@@ -505,7 +502,6 @@ for (chareoff_class_wt in chareoff_class_wt_list) {
   }
 }
 
-# Create a data frame for plotting
 plot_data <- data.frame(
   chareoff_class_wt = rep(chareoff_class_wt_list, each = length(fully_paid_class_wt_list)),
   fully_paid_class_wt = rep(fully_paid_class_wt_list, times = length(chareoff_class_wt_list)),
@@ -569,7 +565,6 @@ print(final_results)
 
 metrics <- calculate_metrics(final_results)
 
-# Print Results
 cat("Train - Charged Off Class:\n")
 cat("Precision: ", metrics$train_precision_charged_off, "\n")
 cat("Recall: ", metrics$train_recall_charged_off, "\n")
@@ -595,31 +590,26 @@ cat("F1: ", metrics$eval_f1_fully_paid, "\n")
 
 
 ```{r}
-# Function to evaluate thresholds
+
 evaluate_thresholds <- function(model, eval_df, prob_thresholds, calculate_class_metrics) {
   if (!"loan_status" %in% names(eval_df)) {
     stop("The evaluation dataframe must contain a 'loan_status' column.")
   }
   
-  # Initialize a list to store results for each threshold
+  
   threshold_results <- list()
   
-  # Loop through each threshold
   for (threshold in prob_thresholds) {
-    # Predict probabilities for "Charged Off"
+    
     predictions <- predict(model, eval_df, type = "prob")
     charged_off_probs <- predictions[, "Charged Off"]
     
-    # Apply threshold to classify as "Charged Off" or "Fully Paid"
     predicted_classes <- ifelse(charged_off_probs >= threshold, "Charged Off", "Fully Paid")
     
-    # Generate a confusion matrix
     conf_matrix <- table(predicted_classes, eval_df$loan_status)
     
-    # Calculate metrics for the "Charged Off" class
     metrics <- calculate_class_metrics(conf_matrix, class = "Charged Off")
     
-    # Store precision and recall for the "Charged Off" class at this threshold
     threshold_results[[as.character(threshold)]] <- list(
       precision = metrics[1],
       recall = metrics[2],
@@ -627,12 +617,10 @@ evaluate_thresholds <- function(model, eval_df, prob_thresholds, calculate_class
     )
   }
   
-  # Convert the list to a data frame for easier visualization
   threshold_df <- do.call(rbind, lapply(threshold_results, function(x) {
     cbind(precision = x$precision, recall = x$recall, f1 = x$f1)
   }))
   
-  # Add the threshold as a column
   threshold_df <- cbind(threshold = prob_thresholds, threshold_df)
   
   return(threshold_df)
@@ -640,12 +628,10 @@ evaluate_thresholds <- function(model, eval_df, prob_thresholds, calculate_class
 
 
 calculate_class_metrics <- function(conf_matrix, class) {
-  # Check that the class exists in the confusion matrix
   if (!(class %in% rownames(conf_matrix) && class %in% colnames(conf_matrix))) {
     stop("The specified class is not in the confusion matrix.")
   }
   
-  # Extract indices of the specified class
   class_index <- which(rownames(conf_matrix) == class)
   
   tp <- conf_matrix[class, class]  # True Positives
@@ -686,16 +672,15 @@ ggplot(threshold_metrics, aes(x = threshold)) +
 ## Test Accuracy 
 
 ```{r}
-# Function to calculate Precision and Recall for all classes
+
 evaluate_model_metrics <- function(df, model, charge_off_threshold) {
   if (!"loan_status" %in% names(df)) {
     stop("The dataframe must contain a 'loan_status' column.")
   }
   
-  # Predict probabilities for each class
+  
   pred_probs <- predict(model, df, type = "prob")
   
-  # Apply threshold for "Charged Off"
   predicted_classes <- apply(pred_probs, 1, function(row) {
     if (row["Charged Off"] >= charge_off_threshold) {
       return("Charged Off")
@@ -704,13 +689,10 @@ evaluate_model_metrics <- function(df, model, charge_off_threshold) {
     }
   })
   
-  # Convert predictions to factor with the same levels as the actual classes
   predicted_classes <- factor(predicted_classes, levels = levels(df$loan_status))
   
-  # Confusion matrix
   conf_matrix <- table(Predicted = predicted_classes, Actual = df$loan_status)
   
-  # Function to calculate metrics for a given class
   calculate_metrics_for_class <- function(class_name) {
     tp <- conf_matrix[class_name, class_name]  # True Positives
     fn <- sum(conf_matrix[class_name, ]) - tp  # False Negatives
@@ -722,12 +704,10 @@ evaluate_model_metrics <- function(df, model, charge_off_threshold) {
     return(c(Precision = precision, Recall = recall))
   }
   
-  # Calculate metrics for all classes
   class_metrics <- lapply(levels(df$loan_status), function(class_name) {
     calculate_metrics_for_class(class_name)
   })
   
-  # Combine metrics into a data frame
   metrics_df <- do.call(rbind, class_metrics)
   rownames(metrics_df) <- levels(df$loan_status)
   
@@ -738,37 +718,31 @@ evaluate_model_metrics(test_df, final_results$model, 0.5)
 ```
 
 ```{r}
-# Load necessary libraries
-library(ggplot2)
 
-# Set the number of iterations
 N <- 10000
-accuracies <- numeric(N)  # Pre-allocate a numeric vector to store the accuracy values
+accuracies <- numeric(N)  
 
-# Define a function to calculate the accuracy for "Charged Off"
+
 calculate_accuracy <- function(model, sample_data) {
-  # Make predictions
+  
   predictions <- predict(model, sample_data, type = "response")
   
-  # Calculate accuracy for the "Charged Off" class
   true_labels <- sample_data$loan_status
   charged_off_accuracy <- mean(predictions == true_labels)
   
   return(charged_off_accuracy)
 }
 
-# Loop to run the process N times
+
 for (i in 1:N) {
-  sample_test_df <- handle_class_imbalance(test_df, "loan_status")  # Make sure this function is defined
+  sample_test_df <- handle_class_imbalance(test_df, "loan_status")  
   
-  # Calculate accuracy for the "Charged Off" class
   accuracy <- calculate_accuracy(final_results$model, sample_test_df)
   
-  # Store the accuracy
   accuracies[i] <- accuracy
 }
 
-# Plot histogram of accuracies
+
 ggplot(data.frame(accuracy = accuracies), aes(x = accuracy)) +
   geom_histogram(binwidth = 0.001, fill = "skyblue", color = "black", alpha = 0.7) +
   labs(title = "Histogram of Charged Off Accuracy", x = "Accuracy", y = "Frequency") +
@@ -779,30 +753,29 @@ ggplot(data.frame(accuracy = accuracies), aes(x = accuracy)) +
 ## Predict
 
 ```{r}
-# Function to calculate predictions for "Charged Off" and "Fully Paid"
+
 calculate_loan_outcomes <- function(model, predict_df) {
-  # Make predictions
+  
   predictions <- predict(model, predict_df, type = "response")
   
-  # Count the number of people predicted to "Charge Off" and "Pay Fully"
   outcome_counts <- table(predictions)
   
-  # Extract counts for "Charged Off" and "Fully Paid" (adjust these levels as per your dataset)
   charged_off_count <- if ("Charged Off" %in% names(outcome_counts)) outcome_counts["Charged Off"] else 0
   fully_paid_count <- if ("Fully Paid" %in% names(outcome_counts)) outcome_counts["Fully Paid"] else 0
   
-  # Return the results as a named list
   return(list(
     Charged_Off = charged_off_count,
     Fully_Paid = fully_paid_count
   ))
 }
 
-# Example usage
 results <- calculate_loan_outcomes(final_results$model, predict_df)
 
-# Print the results
 cat("Total Charged Off:", results$Charged_Off, "\n")
 cat("Total Fully Paid:", results$Fully_Paid, "\n")
 
 ```
+
+
+
+
