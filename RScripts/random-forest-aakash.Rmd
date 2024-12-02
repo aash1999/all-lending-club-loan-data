@@ -770,12 +770,54 @@ calculate_loan_outcomes <- function(model, predict_df) {
 }
 
 results <- calculate_loan_outcomes(final_results$model, predict_df)
-
-cat("Total Charged Off:", results$Charged_Off, "\n")
-cat("Total Fully Paid:", results$Fully_Paid, "\n")
+cat("Predicting Charged Off % from 2015 to 2018 Active/Current loans: \n")
+cat("Total Charged Off:", results$Charged_Off, "(", (results$Charged_Off/(results$Charged_Off + results$Fully_Paid))*100, "% )\n")
+cat("Total Fully Paid:", results$Fully_Paid,"(", (results$Fully_Paid/(results$Charged_Off + results$Fully_Paid))*100, "% )\n")
 
 ```
 
 
+```{r}
+library(ggplot2)
 
+calculate_loan_outcomes_with_probs <- function(model, predict_df, threshold = 0.5) {
+  
+  prob_predictions <- predict(model, predict_df, type = "prob")
+  
+  charged_off_probs <- prob_predictions[, "Charged Off"]
+  
+  predictions <- ifelse(charged_off_probs >= threshold, "Charged Off", "Fully Paid")
+  
+  outcome_counts <- table(predictions)
+  
+  charged_off_count <- if ("Charged Off" %in% names(outcome_counts)) outcome_counts["Charged Off"] else 0
+  fully_paid_count <- if ("Fully Paid" %in% names(outcome_counts)) outcome_counts["Fully Paid"] else 0
+  
+  return(list(
+    Charged_Off = charged_off_count,
+    Fully_Paid = fully_paid_count,
+    Charged_Off_Probs = charged_off_probs
+  ))
+}
+
+results <- calculate_loan_outcomes_with_probs(final_results$model, predict_df, .85)
+
+filtered_probs <- results$Charged_Off_Probs[results$Charged_Off_Probs >= 0.5]
+
+cat("Predicting Charged Off % from 2015 to 2018 Active/Current loans: \n")
+cat("Total Charged Off:", results$Charged_Off, "(", (results$Charged_Off / (results$Charged_Off + results$Fully_Paid)) * 100, "% )\n")
+cat("Total Fully Paid:", results$Fully_Paid, "(", (results$Fully_Paid / (results$Charged_Off + results$Fully_Paid)) * 100, "% )\n")
+
+
+ggplot(data.frame(Charged_Off_Probs = filtered_probs), aes(x = Charged_Off_Probs)) +
+  geom_histogram(binwidth = 0.01, fill = "blue", alpha = 0.7) +
+  labs(
+    title = "Histogram of Charged Off Probabilities (Above Threshold)",
+    x = "Probability of Charged Off",
+    y = "Frequency"
+  ) +
+  theme_minimal()
+
+
+```
 
