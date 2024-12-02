@@ -591,7 +591,151 @@ cat("Recall: ", metrics$eval_recall_fully_paid, "\n")
 cat("F1: ", metrics$eval_f1_fully_paid, "\n")
 
 ```
+
+
+
+```{r}
+# Function to evaluate thresholds
+evaluate_thresholds <- function(model, eval_df, prob_thresholds, calculate_class_metrics) {
+  if (!"loan_status" %in% names(eval_df)) {
+    stop("The evaluation dataframe must contain a 'loan_status' column.")
+  }
+  
+  # Initialize a list to store results for each threshold
+  threshold_results <- list()
+  
+  # Loop through each threshold
+  for (threshold in prob_thresholds) {
+    # Predict probabilities for "Charged Off"
+    predictions <- predict(model, eval_df, type = "prob")
+    charged_off_probs <- predictions[, "Charged Off"]
+    
+    # Apply threshold to classify as "Charged Off" or "Fully Paid"
+    predicted_classes <- ifelse(charged_off_probs >= threshold, "Charged Off", "Fully Paid")
+    
+    # Generate a confusion matrix
+    conf_matrix <- table(predicted_classes, eval_df$loan_status)
+    
+    # Calculate metrics for the "Charged Off" class
+    metrics <- calculate_class_metrics(conf_matrix, class = "Charged Off")
+    
+    # Store precision and recall for the "Charged Off" class at this threshold
+    threshold_results[[as.character(threshold)]] <- list(
+      precision = metrics[1],
+      recall = metrics[2],
+      f1 = metrics[3]
+    )
+  }
+  
+  # Convert the list to a data frame for easier visualization
+  threshold_df <- do.call(rbind, lapply(threshold_results, function(x) {
+    cbind(precision = x$precision, recall = x$recall, f1 = x$f1)
+  }))
+  
+  # Add the threshold as a column
+  threshold_df <- cbind(threshold = prob_thresholds, threshold_df)
+  
+  return(threshold_df)
+}
+
+
+calculate_class_metrics <- function(conf_matrix, class) {
+  # Check that the class exists in the confusion matrix
+  if (!(class %in% rownames(conf_matrix) && class %in% colnames(conf_matrix))) {
+    stop("The specified class is not in the confusion matrix.")
+  }
+  
+  # Extract indices of the specified class
+  class_index <- which(rownames(conf_matrix) == class)
+  
+  tp <- conf_matrix[class, class]  # True Positives
+  fn <- sum(conf_matrix[class, -class_index])  # False Negatives
+  fp <- sum(conf_matrix[-class_index, class])  # False Positives
+  tn <- sum(conf_matrix) - tp - fn - fp  # True Negatives
+  
+  precision <- tp / (tp + fp)
+  recall <- tp / (tp + fn)
+  f1 <- 2 * (precision * recall) / (precision + recall)
+  
+  return(c(precision, recall, f1))
+}
+
+
+# Example Usage
+# Assuming final_results$model is your Random Forest model,
+# eval_df is the evaluation dataframe, and prob_thresholds is a vector of thresholds
+prob_thresholds <- seq(0.1, 0.9, by = 0.1)
+threshold_metrics <- evaluate_thresholds(final_results$model, eval_df, prob_thresholds, calculate_class_metrics)
+
+# Visualize precision and recall trade-off
+library(ggplot2)
+ggplot(threshold_metrics, aes(x = threshold)) +
+  geom_line(aes(y = precision, color = "Precision")) +
+  geom_line(aes(y = recall, color = "Recall")) +
+  labs(title = "Precision-Recall Tradeoff for Charged Off Class",
+       x = "Probability Threshold",
+       y = "Metric Value") +
+  theme_minimal() +
+  scale_color_manual(values = c("Precision" = "blue", "Recall" = "red"))
+
+
+```
+
+
+
 ## Test Accuracy 
+
+```{r}
+# Function to calculate Precision and Recall for all classes
+evaluate_model_metrics <- function(df, model, charge_off_threshold) {
+  if (!"loan_status" %in% names(df)) {
+    stop("The dataframe must contain a 'loan_status' column.")
+  }
+  
+  # Predict probabilities for each class
+  pred_probs <- predict(model, df, type = "prob")
+  
+  # Apply threshold for "Charged Off"
+  predicted_classes <- apply(pred_probs, 1, function(row) {
+    if (row["Charged Off"] >= charge_off_threshold) {
+      return("Charged Off")
+    } else {
+      return("Fully Paid")
+    }
+  })
+  
+  # Convert predictions to factor with the same levels as the actual classes
+  predicted_classes <- factor(predicted_classes, levels = levels(df$loan_status))
+  
+  # Confusion matrix
+  conf_matrix <- table(Predicted = predicted_classes, Actual = df$loan_status)
+  
+  # Function to calculate metrics for a given class
+  calculate_metrics_for_class <- function(class_name) {
+    tp <- conf_matrix[class_name, class_name]  # True Positives
+    fn <- sum(conf_matrix[class_name, ]) - tp  # False Negatives
+    fp <- sum(conf_matrix[, class_name]) - tp  # False Positives
+    tn <- sum(conf_matrix) - tp - fn - fp  # True Negatives
+    
+    precision <- tp / (tp + fp)
+    recall <- tp / (tp + fn)
+    return(c(Precision = precision, Recall = recall))
+  }
+  
+  # Calculate metrics for all classes
+  class_metrics <- lapply(levels(df$loan_status), function(class_name) {
+    calculate_metrics_for_class(class_name)
+  })
+  
+  # Combine metrics into a data frame
+  metrics_df <- do.call(rbind, class_metrics)
+  rownames(metrics_df) <- levels(df$loan_status)
+  
+  return(metrics_df)
+}
+
+evaluate_model_metrics(test_df, final_results$model, 0.5)
+```
 
 ```{r}
 # Load necessary libraries
@@ -630,8 +774,6 @@ ggplot(data.frame(accuracy = accuracies), aes(x = accuracy)) +
   labs(title = "Histogram of Charged Off Accuracy", x = "Accuracy", y = "Frequency") +
   theme_minimal()
 ```
-
-
 
 
 ## Predict
