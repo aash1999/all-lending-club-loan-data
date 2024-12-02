@@ -1,5 +1,4 @@
 ---
-title: "Logistic Regression Model"
 output:
   html_document:
     code_folding: show
@@ -25,7 +24,7 @@ options(scientific=T, digits = 3)
 
 ```{r, echo=TRUE}
 
-#Load Train Data
+#Load 2013-2015 Train Data
 train_data <-read.csv("C:\\Users\\msyag\\OneDrive\\Documents\\Intro to Data Science\\data_2013_2015_train.csv")
 
 #Convert Loan Status to Numeric Values \ 1= Charged Off 0 = Fully Paid
@@ -42,6 +41,20 @@ test_data_2 <-read.csv("C:\\Users\\msyag\\OneDrive\\Documents\\Intro to Data Sci
 
 #Convert Loan Status to Numeric Values \ 1= Charged Off 0 = Fully Paid
 test_data_2$loan_status <- ifelse(test_data_2$loan_status == "Charged Off", 1,0)
+
+```
+
+```{r, echo=TRUE}
+#For Question #3
+#Load Active Loans Data
+active_data <-read.csv("C:\\Users\\msyag\\OneDrive\\Documents\\Intro to Data Science\\predict.csv")
+
+#Load 2013-2018 Train Data
+all_train_data <-read.csv("C:\\Users\\msyag\\OneDrive\\Documents\\Intro to Data Science\\train.csv")
+
+#Convert Loan Status to Numeric Values \ 1= Charged Off 0 = Fully Paid
+all_train_data$loan_status <- ifelse(all_train_data$loan_status == "Charged Off", 1,0)
+
 
 ```
 
@@ -126,7 +139,8 @@ plot(roc_curve)
 
 ```
 
-# 3. Logistic Regression Model Accuracy Across Timeframes: How accurately can we predict loan charge-offs for Lending Club loans issued between 2016-2018 using our 2013-2015 trained models from Question #2?
+# Evaluating the Model Using Test Data from 2015-2018
+
 
 After evaluating the model using test data from 2015-2018, the following can be derived:
 
@@ -181,3 +195,26 @@ print(auc_value_2)
 plot(roc_curve_2)
 
 ```
+
+# 3. How accurately can we predict loan charge-offs for Lending Club loans issued between 2015-2018 that are still active and might charge-off in future, using our 2013-2018 trained models from Question #2?
+
+After using 2013-2018 data to train the logistic model, we can then use this model to predict whether active loans from 2015-2018 will charge off. After predicting probabilities and using a probability threshold of 0.5, the model predicts that there's a higher than 50% risk of 3,485 active loans being charged off. On the other hand, the model predicts that there's a 50% or lower risk of 858,829 active loans being charged off
+
+```{r, echo=TRUE}
+#library
+library(dplyr)
+#Train Logistic Regression Model using 2013-2018 trained data
+active_model <-glm(loan_status ~ loan_amnt + int_rate + grade + sub_grade + dti + emp_length, data = all_train_data, family = binomial)
+summary(active_model)
+
+#Predict Probabilities
+active_data$predicted_prob <-predict(active_model, newdata = active_data, type = "response")
+
+#Classify loans based on probability threshold
+active_data <-active_data %>%
+  mutate(predicted_risk = ifelse(predicted_prob > 0.5, "High Risk", "Low Risk"))
+
+#Summary of Predicted Charge-Offs
+table(active_data$predicted_risk)
+```
+
