@@ -587,6 +587,47 @@ cat("F1: ", metrics$eval_f1_fully_paid, "\n")
 
 ```
 
+```{r}
+
+library(pROC)
+predictions <- predict(final_results$model, test_df, type = "prob")
+
+positive_class_prob <- predictions[, "Charged Off"]
+
+true_labels <- test_df$loan_status
+
+roc_curve <- roc(response = true_labels, predictor = positive_class_prob)
+
+plot(roc_curve, col = "blue", main = "ROC Curve for Random Forest Model")
+auc <- auc(roc_curve)
+legend("bottomright", legend = paste("AUC =", round(auc, 3)), col = "blue", lwd = 2)
+
+```
+
+```{r}
+# Load necessary library
+library(pROC)
+
+# Make predictions on the test dataset
+# Assuming your target column is binary (e.g., "Charged Off" vs "Fully Paid")
+# and test_df is your test dataset
+predictions <- predict(final_results$model, test_df, type = "prob")
+
+# Extract the probabilities for the positive class (e.g., "Charged Off")
+positive_class_prob <- predictions[, "Charged Off"]
+
+# Extract the true labels from the test dataset
+true_labels <- test_df$target_col  # Replace `target_col` with the actual column name
+
+# Plot the ROC curve
+roc_curve <- roc(response = true_labels, predictor = positive_class_prob)
+
+# Plot
+plot(roc_curve, col = "blue", main = "ROC Curve for Random Forest Model")
+auc <- auc(roc_curve)
+legend("bottomright", legend = paste("AUC =", round(auc, 3)), col = "blue", lwd = 2)
+
+```
 
 
 ```{r}
