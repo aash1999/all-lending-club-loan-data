@@ -294,7 +294,7 @@ target_column <- "loan_status"
 sample_train_df <- handle_class_imbalance(train_df, target_column)
 sample_eval_df <- handle_class_imbalance(eval_df, target_column)
 
-ntree_list <- seq(150, 500, by = 20)
+ntree_list <- seq(1, 200, by = 20)
 train_accuracies <- c()
 eval_accuracies <- c()
 
@@ -331,17 +331,15 @@ ggplot(accuracy_df, aes(x = ntree)) +
 
 ```{r}
 target_column <- "loan_status"  
-sample_train_df <- handle_class_imbalance(train_df, target_column)
-sample_eval_df <- handle_class_imbalance(eval_df, target_column)
 
-maxdepth_list <- seq(3, 100, by = 5)
+maxdepth_list <- seq(2, 100, by = 3)
 train_accuracies <- c()
 eval_accuracies <- c()
 
 for (maxdepth in maxdepth_list) {
   cat("Training Random Forest with", maxdepth, "max depth...\n")
   
-  rf_model <- train_and_evaluate_rf(sample_train_df, sample_eval_df, target_column, ntree=120, maxdepth = maxdepth)
+  rf_model <- train_and_evaluate_rf(sample_train_df, sample_eval_df, target_column, ntree=25, maxdepth = maxdepth)
   
   
   train_accuracies <- c(train_accuracies, rf_model$train_accuracy)
@@ -374,14 +372,14 @@ target_column <- "loan_status"
 sample_train_df <- handle_class_imbalance(train_df, target_column)
 sample_eval_df <- handle_class_imbalance(eval_df, target_column)
 
-maxnodes_list <- seq(80, 250, by = 5)
+maxnodes_list <- seq(2, 50, by = 1)
 train_accuracies <- c()
 eval_accuracies <- c()
 
 for (maxnodes in maxnodes_list) {
   cat("Training Random Forest with", maxnodes, "max nodes...\n")
   
-  rf_model <- train_and_evaluate_rf(sample_train_df, sample_eval_df, target_column, ntree=120, maxdepth = 25, maxnodes = maxnodes)
+  rf_model <- train_and_evaluate_rf(sample_train_df, sample_eval_df, target_column, ntree=25, maxdepth = 15, maxnodes = maxnodes)
   
   train_accuracies <- c(train_accuracies, rf_model$train_accuracy)
   eval_accuracies <- c(eval_accuracies, rf_model$eval_accuracy)
@@ -403,7 +401,9 @@ ggplot(accuracy_df, aes(x = maxnodes)) +
        x = "maxnodes",
        y = "Accuracy (%)") +
   scale_color_manual(name = "Legend", values = c("Train Accuracy" = "blue", "Eval Accuracy" = "red")) +
+  scale_x_continuous(breaks = seq(min(accuracy_df$maxnodes), max(accuracy_df$maxnodes), by = 5)) +
   theme_minimal()
+
 ```
 
 
@@ -420,8 +420,8 @@ eval_accuracies <- c()
 for (chareoff_class_wt in chareoff_class_wt_list) {
   cat("Training Random Forest with", chareoff_class_wt, " chareoff_class_wt...\n")
   
-  rf_model <- train_and_evaluate_rf(sample_train_df, sample_eval_df, target_column, ntree=120, maxdepth = 25,
-                                    maxnodes = 20, classwt = c("Charged Off" = chareoff_class_wt, "Fully Paid" = 1))
+  rf_model <- train_and_evaluate_rf(sample_train_df, sample_eval_df, target_column, ntree=25, maxdepth = 25,
+                                    maxnodes = 17, classwt = c("Charged Off" = chareoff_class_wt, "Fully Paid" = 1))
   
   
   train_accuracies <- c(train_accuracies, rf_model$train_accuracy)
@@ -559,7 +559,7 @@ ggplot(plot_data, aes(x = eval_recall_fully_paid, y = eval_precision_fully_paid,
 ## Train Model on Whole Train Dataset
 
 ```{r}
-final_results <- train_and_evaluate_rf(train_df, eval_df, target_column, ntree=120, maxdepth = 25, maxnodes = 20)
+final_results <- train_and_evaluate_rf(train_df, eval_df, target_column, ntree=25, maxdepth = 25, maxnodes = 17)
 print(final_results)
 
 metrics <- calculate_metrics(final_results)
@@ -585,6 +585,8 @@ cat("Recall: ", metrics$eval_recall_fully_paid, "\n")
 cat("F1: ", metrics$eval_f1_fully_paid, "\n")
 
 ```
+
+
 
 
 
@@ -713,8 +715,29 @@ evaluate_model_metrics <- function(df, model, charge_off_threshold) {
   return(metrics_df)
 }
 
-evaluate_model_metrics(test_df, final_results$model, 0.5)
+evaluate_model_metrics(test_df, final_results$model, 0.7)
 ```
+
+
+
+
+```{r}
+
+library(pROC)
+predictions <- predict(final_results$model, test_df, type = "prob")
+
+positive_class_prob <- predictions[, "Charged Off"]
+
+true_labels <- test_df$loan_status
+
+roc_curve <- roc(response = true_labels, predictor = positive_class_prob)
+
+plot(roc_curve, col = "blue", main = "ROC Curve for Random Forest Model")
+auc <- auc(roc_curve)
+legend("bottomright", legend = paste("AUC =", round(auc, 3)), col = "blue", lwd = 2)
+
+```
+
 
 ```{r}
 
@@ -753,25 +776,40 @@ ggplot(data.frame(accuracy = accuracies), aes(x = accuracy)) +
 
 ```{r}
 
-calculate_loan_outcomes <- function(model, predict_df) {
+library(dplyr)
+
+# Function to calculate confidence-adjusted counts
+calculate_confidence_counts <- function(count, total, confidence_level) {
+  proportion <- count / total
+  z <- qnorm(1 - (1 - confidence_level) / 2)
+  margin_error <- z * sqrt((proportion * (1 - proportion)) / total)
   
-  predictions <- predict(model, predict_df, type = "response")
-  
-  outcome_counts <- table(predictions)
-  
-  charged_off_count <- if ("Charged Off" %in% names(outcome_counts)) outcome_counts["Charged Off"] else 0
-  fully_paid_count <- if ("Fully Paid" %in% names(outcome_counts)) outcome_counts["Fully Paid"] else 0
-  
-  return(list(
-    Charged_Off = charged_off_count,
-    Fully_Paid = fully_paid_count
-  ))
+  adjusted_count <- total * (proportion - margin_error)  # Lower bound count at confidence level
+  return(max(0, round(adjusted_count))) # Ensure no negative counts
 }
 
+# Predict results
 results <- calculate_loan_outcomes(final_results$model, predict_df)
+
+# Total counts
+total_loans <- results$Charged_Off + results$Fully_Paid
+
+# Calculate confidence-adjusted counts for each outcome
+outcome_summary <- tibble(
+  Outcome = c("Charged Off", "Fully Paid"),
+  Count = c(results$Charged_Off, results$Fully_Paid)
+) %>%
+  rowwise() %>%
+  mutate(
+    CI_99 = calculate_confidence_counts(Count, total_loans, 0.99),
+    CI_95 = calculate_confidence_counts(Count, total_loans, 0.95),
+    CI_90 = calculate_confidence_counts(Count, total_loans, 0.90)
+  )
+
+# Display the summary
 cat("Predicting Charged Off % from 2015 to 2018 Active/Current loans: \n")
-cat("Total Charged Off:", results$Charged_Off, "(", (results$Charged_Off/(results$Charged_Off + results$Fully_Paid))*100, "% )\n")
-cat("Total Fully Paid:", results$Fully_Paid,"(", (results$Fully_Paid/(results$Charged_Off + results$Fully_Paid))*100, "% )\n")
+print(outcome_summary)
+
 
 ```
 
