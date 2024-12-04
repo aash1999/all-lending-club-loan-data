@@ -776,46 +776,6 @@ ggplot(data.frame(accuracy = accuracies), aes(x = accuracy)) +
 ## Predict
 
 ```{r}
-
-library(dplyr)
-
-# Function to calculate confidence-adjusted counts
-calculate_confidence_counts <- function(count, total, confidence_level) {
-  proportion <- count / total
-  z <- qnorm(1 - (1 - confidence_level) / 2)
-  margin_error <- z * sqrt((proportion * (1 - proportion)) / total)
-  
-  adjusted_count <- total * (proportion - margin_error)  # Lower bound count at confidence level
-  return(max(0, round(adjusted_count))) # Ensure no negative counts
-}
-
-# Predict results
-results <- calculate_loan_outcomes(final_results$model, predict_df)
-
-# Total counts
-total_loans <- results$Charged_Off + results$Fully_Paid
-
-# Calculate confidence-adjusted counts for each outcome
-outcome_summary <- tibble(
-  Outcome = c("Charged Off", "Fully Paid"),
-  Count = c(results$Charged_Off, results$Fully_Paid)
-) %>%
-  rowwise() %>%
-  mutate(
-    CI_99 = calculate_confidence_counts(Count, total_loans, 0.99),
-    CI_95 = calculate_confidence_counts(Count, total_loans, 0.95),
-    CI_90 = calculate_confidence_counts(Count, total_loans, 0.90)
-  )
-
-# Display the summary
-cat("Predicting Charged Off % from 2015 to 2018 Active/Current loans: \n")
-print(outcome_summary)
-
-
-```
-
-
-```{r}
 library(ggplot2)
 
 calculate_loan_outcomes_with_probs <- function(model, predict_df, threshold = 0.5) {
@@ -838,7 +798,7 @@ calculate_loan_outcomes_with_probs <- function(model, predict_df, threshold = 0.
   ))
 }
 
-results <- calculate_loan_outcomes_with_probs(final_results$model, predict_df, .85)
+results <- calculate_loan_outcomes_with_probs(final_results$model, predict_df, .7)
 
 filtered_probs <- results$Charged_Off_Probs[results$Charged_Off_Probs >= 0.5]
 
@@ -858,4 +818,59 @@ ggplot(data.frame(Charged_Off_Probs = filtered_probs), aes(x = Charged_Off_Probs
 
 
 ```
+
+```{r}
+evaluate_thresholds <- function(prob_predictions, labels, thresholds) {
+  # Extract probabilities for "Charged Off"
+  charged_off_probs <- prob_predictions[, "Charged Off"]
+  
+  # Evaluate metrics for each threshold
+  metrics <- sapply(thresholds, function(th) {
+    # Generate predictions based on threshold
+    preds <- ifelse(charged_off_probs >= th, "Charged Off", "Fully Paid")
+    
+    # Calculate precision
+    precision <- if (sum(preds == "Charged Off") > 0) {
+      sum(preds == "Charged Off" & labels == "Charged Off") / sum(preds == "Charged Off")
+    } else {
+      NA  # Avoid division by zero
+    }
+    
+    # Calculate recall
+    recall <- sum(preds == "Charged Off" & labels == "Charged Off") / sum(labels == "Charged Off")
+    
+    # Calculate F1 score
+    f1 <- if (!is.na(precision) && (precision + recall) > 0) {
+      2 * (precision * recall) / (precision + recall)
+    } else {
+      NA  # Avoid invalid F1 calculations
+    }
+    
+    c(Threshold = th, Precision = precision, Recall = recall, F1 = f1)
+  })
+  
+  # Convert metrics to a data frame
+  metrics_df <- as.data.frame(t(metrics))
+  rownames(metrics_df) <- NULL  # Remove row names
+  return(metrics_df)
+}
+
+# Example usage
+prob_predictions <- predict(final_results$model, test_df, type = "prob")
+thresholds <- seq(0, 1, 0.1)  # Define thresholds to evaluate
+threshold_metrics <- evaluate_thresholds(prob_predictions, test_df$loan_status, thresholds)
+
+# Print the results
+print(threshold_metrics)
+
+
+
+```
+
+
+
+
+
+
+
 
