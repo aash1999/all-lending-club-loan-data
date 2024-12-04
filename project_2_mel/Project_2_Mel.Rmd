@@ -73,7 +73,7 @@ Employment Length less than a year: -0.2635: Borrowers with less than one year o
 ```{r, echo=TRUE}
 
 #Logistic Regression Model
-log_model <-glm(loan_status ~ loan_amnt + int_rate + grade + sub_grade + dti + emp_length, data = train_data, family = binomial)
+log_model <-glm(loan_status ~ loan_amnt + int_rate + grade + sub_grade + dti + emp_length + annual_inc, data = train_data, family = binomial)
 
 #Summary of Model
 summary(log_model)
@@ -204,7 +204,7 @@ After using 2013-2018 data to train the logistic model, we can then use this mod
 #library
 library(dplyr)
 #Train Logistic Regression Model using 2013-2018 trained data
-active_model <-glm(loan_status ~ loan_amnt + int_rate + grade + sub_grade + dti + emp_length, data = all_train_data, family = binomial)
+active_model <-glm(loan_status ~ loan_amnt + int_rate + grade + sub_grade + dti + emp_length + last_fico_range_high + last_fico_range_low + fico_range_low + fico_range_high + open_acc_6m + annual_inc, data = all_train_data, family = binomial)
 summary(active_model)
 
 #Predict Probabilities
@@ -213,6 +213,13 @@ active_data$predicted_prob <-predict(active_model, newdata = active_data, type =
 #Classify loans based on probability threshold
 active_data <-active_data %>%
   mutate(predicted_risk = ifelse(predicted_prob > 0.5, "High Risk", "Low Risk"))
+
+#Summary of Predicted Charge-Offs
+table(active_data$predicted_risk)
+
+#Classify loans based on probability threshold
+active_data <-active_data %>%
+  mutate(predicted_risk = ifelse(predicted_prob > 0.7, "High Risk", "Low Risk"))
 
 #Summary of Predicted Charge-Offs
 table(active_data$predicted_risk)
