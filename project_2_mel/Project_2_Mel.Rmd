@@ -204,7 +204,7 @@ After using 2013-2018 data to train the logistic regression model, we can then u
 
 When comparing it to the 0.7 threshold, the 0.5 threshold is more lenient, meaning the model classifies loans as charged off when the probability of being charged off is greater than 50%. Whereas, the 0.7 is stricter requiring a charged off probability greater than 70% for the loan to be classified as charged off. This is why there are less charged off instances with the 76,601 number compared to 115,242.  
 
-### 0.5 Probabability Threshold
+### 0.5 Probabability Threshold For Predicting Charge-Offs Table
 
 ```{r, echo=TRUE}
 #library
@@ -222,7 +222,7 @@ active_data <-active_data %>%
 #Summary of Predicted Charge-Offs
 table(active_data$predicted_risk)
 ```
-### 0.7 Probabability Threshold
+### 0.7 Probabability Threshold For Predicting Charge-Offs Table
 ```{r, echo=TRUE}
 #Classify loans based on probability threshold
 active_data <-active_data %>%

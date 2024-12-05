@@ -1845,8 +1845,8 @@ probability of being charged off is greater than 50%. Whereas, the 0.7
 is stricter requiring a charged off probability greater than 70% for the
 loan to be classified as charged off. This is why there are less charged
 off instances with the 76,601 number compared to 115,242.</p>
-<div id="probabability-threshold" class="section level3">
-<h3>0.5 Probabability Threshold</h3>
+<div id="probabability-threshold-for-predicting-charge-offs-table" class="section level3">
+<h3>0.5 Probabability Threshold For Predicting Charge-Offs Table</h3>
 <pre class="r"><code>#library
 library(dplyr)
 #Train Logistic Regression Model using 2013-2018 trained data
@@ -1865,8 +1865,8 @@ table(active_data$predicted_risk)</code></pre>
 ## Charged Off  Fully Paid 
 ##      115242      748371</code></pre>
 </div>
-<div id="probabability-threshold-1" class="section level3">
-<h3>0.7 Probabability Threshold</h3>
+<div id="probabability-threshold-for-predicting-charge-offs-table-1" class="section level3">
+<h3>0.7 Probabability Threshold For Predicting Charge-Offs Table</h3>
 <pre class="r"><code>#Classify loans based on probability threshold
 active_data &lt;-active_data %&gt;%
   mutate(predicted_risk = ifelse(!is.na(predicted_prob) &amp; predicted_prob &gt; 0.7, &quot;Charged Off&quot;, &quot;Fully Paid&quot;))
