@@ -202,7 +202,10 @@ plot(roc_curve_2)
 
 After using 2013-2018 data to train the logistic regression model, we can then use this model to predict how much active loans from 2015-2018 will charge off. After predicting probabilities and using a probability threshold of 0.5, the model predicts that there's a higher than 50% risk of 115,242 active loans being charged off. On the other hand, the model predicts that there's a 50% or lower risk of 748,371 active loans being charged off.
 
-When comparing it to the 0.7 threshold, the 0.5 threshold is more lenient, meaning the model classifies loans as charged off when the probability of being charged off is greater than 50%. Whereas, the 0.7 is stricter requiring a charged off probability greater than 70% for the loan to be classified as charged off. This is why there are less charged off instances with the 76,601 number compared to 115,242.  
+By raising the threshold from 0.5 to 0.7, the model becomes more conservative in classifying loans as charged off. As a result, fewer loans are categorized as charged off because the model now requires a higher confidence greater greater than 70% to make this prediction. 
+
+Based on this analysis for logistic regression, we anticipate 115,242 current loans to be charged off with a 0.5 probability threshold and 76,601 current loans to be charged off with a 0.7 probability threshold. 
+
 
 ### 0.5 Probabability Threshold For Predicting Charge-Offs Table
 
