@@ -8,8 +8,9 @@
 
 ### PowerPoint
 
-- **Link**: https://docs.google.com/presentation/d/11gyBqXtqfMvd8uPNTza4AVfDaESa5Iql/edit?usp=sharing&ouid=101303611464720615732&rtpof=true&sd=true 
-
+- **Project 1 Link**: https://docs.google.com/presentation/d/11gyBqXtqfMvd8uPNTza4AVfDaESa5Iql/edit?usp=sharing&ouid=101303611464720615732&rtpof=true&sd=true 
+- **Project 2 Link**: https://docs.google.com/presentation/d/173CgDYyy9xvD72MpYmGiLR0wO9Vlwn3U/edit?usp=sharing&ouid=102489423949507971777&rtpof=true&sd=true
+- 
 ### File Structuring
 
 - **DataSet**: Include all `.csv` files. Also, find the `LCDataDictionary.xlsx` file for column information.
