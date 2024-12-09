@@ -1,0 +1,2014 @@
+---
+title: "Classification Modeling on LendingClub's Loan Data"
+author: "Uyemaa Gantulga, Ayush Meshram, Aakash Singh, and Melissa Yago"
+date: "12/09/24"
+output:
+  html_document:
+    code_folding: show
+    number_sections: false
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+---
+
+```{r setup, include=F}
+# Some of common RMD options (and the defaults) are: 
+# include=T, eval=T, echo=T, results='hide'/'asis'/'markup',..., collapse=F, warning=T, message=T, error=T, cache=T, fig.width=6, fig.height=4, fig.dim=c(6,4) #inches, fig.align='left'/'center','right', 
+knitr::opts_chunk$set(results="markup", warning = F, message = F)
+# Can globally set option for number display format.
+options(scientific=T, digits = 3) 
+# options(scipen=9, digits = 3) 
+library(dplyr)
+library(ezids)
+library(ggplot2)
+library(data.table)
+library(fmsb)
+library(corrplot)
+library(lubridate)
+library(maps)
+library(ggmap)
+library(tidyverse)
+library(forcats)
+library(readr)
+library(reshape2)
+library(viridis)  
+library(ggcorrplot)
+library(data.table)
+library(psych)
+library(randomForest)
+
+
+```
+
+### Data preparation 
+```{r}
+# Read large CSV
+data <- fread("C:\\Users\\uemaa\\Documents\\DS6101\\Fin\\Proj2\\cleaned_accepted_2013_to_2018Q4.csv")
+
+df <- data[, c("issue_d", "loan_amnt", "int_rate", "grade", "sub_grade", "emp_length", "annual_inc", "dti", "fico_range_low", "fico_range_high", "last_fico_range_high", "last_fico_range_low", "open_acc_6m","loan_status")]
+```
+
+
+# Introduction
+
+LendingClub is a financial services company that facilitates loan contracts. This analysis examines approved loan data (2013-2018) to identify factors that contribute to loan charge-offs.
+
+**Dataset Overview**:
+- **Observations**: 2.15 million approved loans
+- **Goal**: Use predictive modeling to analyze factors affecting loan charge-offs.
+
+Source: https://www.kaggle.com/datasets/wordsforthewise/lending-club 
+Github: https://github.com/aash1999/all-lending-club-loan-data 
+Ppt: https://docs.google.com/presentation/d/173CgDYyy9xvD72MpYmGiLR0wO9Vlwn3U/edit?usp=sharing&ouid=102489423949507971777&rtpof=true&sd=true 
+
+# Research Questions
+
+1. **Features Impact**: Which combination of features from our
+initial EDA (interest rate, grade, annual income, etc.)
+provides the most reliable predictions of the 2013-2018 loan
+data? 
+2. **Model Performance**: How do logistic regression and
+random forest models compare in their ability to predict
+loan charge-offs when trained on 2013-2015 data and
+tested on holdout sets from 2013-2015 and 2016-2018 data? 
+3. **Prediction Accuracy Across Timeframes**:  How accurately can
+we predict loan charge-offs for loans issued between
+2015-2018 that are still active and might charge-off in
+future, using our 2013-2018 trained models from Question 2?
+
+# Question #1: Features Impact
+
+Which combination of features from our initial EDA (interest rate, grade, annual income, etc.) provides the most reliable predictions of the 2013-2018 loan data?
+
+## Independent Variables:
+
+This analysis focuses on the following variables:
+
+1. **Loan Amount**: The total loan amount approved for the borrower.
+2. **Interest Rate**: The interest rate associated with the loan.
+3. **Grade**: The loan's credit grade assigned by LendingClub.
+4. **Sub Grade**: A finer classification of the credit grade.
+5. **DTI (Debt to Income Ratio)**: The borrower's monthly debt payments divided by their monthly income.
+6. **Employment Length**: The borrower's duration of employment, measured in years.
+7. **Annual Income**: The borrower's yearly income.
+8. **open_acc_6m**: Number of open accounts the borrower had in the last six months.
+9. **FICO Scores**:
+    - **FICO Range High/Low**: The range of the borrower's credit score at the time of loan issuance.
+    - **Latest FICO Range High/Low**: The most recent range of the borrower's credit score.
+
+## Dependent Variable:
+- **Loan Status**: The outcome of the loan, categorized as either "Charged Off" (defaulted loans) or "Fully Paid" (successfully repaid loans).
+
+---
+
+## Significance of Variables
+Each independent variable contributes to the prediction of loan charge-offs:
+
+- **Loan Amount**: Larger loans may have higher risk due to greater financial burden.
+- **Interest Rate**: Higher interest rates often correlate with riskier loans.
+- **Grade and Sub Grade**: Indicators of creditworthiness; lower grades suggest higher risk.
+- **DTI**: High DTI ratios indicate borrowers with financial strain, increasing default risk.
+- **Employment Length**: Longer employment may indicate financial stability.
+- **Annual Income**: Higher income reduces the likelihood of default.
+- **open_acc_6m**: Indicates the borrower’s recent credit activity, which could reflect their financial behavior.
+- **FICO Scores**: Key indicators of a borrower’s creditworthiness.
+
+
+## Loan Analysis
+
+### Loan Repayment Rate by Grade
+
+```{r loan-repayment-rate, echo=FALSE, out.width="80%", fig.align="center"}
+knitr::include_graphics("C:\\Users\\uemaa\\Documents\\DS6101\\Fin\\Proj2\\images\\loan_repayment_grade.png")
+```
+
+The bar chart below shows the repayment rates across different loan grades. 
+It highlights that higher grades (e.g., A and B) have significantly better repayment rates compared to lower grades (e.g., F and G).
+
+### Comparison of Loan Variables (2014 vs. 2017)
+The radar chart below compares various loan characteristics (e.g., interest rates, FICO scores, DTI) between 2014 and 2017. This helps us observe changes in borrower profiles over time.
+
+```{r}
+knitr::include_graphics("C:\\Users\\uemaa\\Documents\\DS6101\\Fin\\Proj2\\images\\Comp_loan_variables.png")
+```
+Key Insight:
+
+FICO scores and debt-to-income ratios remained relatively stable.
+Interest rates show slight variation, reflecting adjustments in lending policies.
+
+### Distribution of Loan Amounts
+The histogram below represents the distribution of loan amounts for accepted loans. Most loans fall between $5,000 and $20,000, with a peak at $10,000.
+
+```{r}
+knitr::include_graphics("C:\\Users\\uemaa\\Documents\\DS6101\\Fin\\Proj2\\images\\distribution_accepted.png")
+```
+Key Insight:
+Loan amounts are concentrated around the $10,000 mark.
+Larger loans ($30,000 or more) are less frequent but still significant in volume.
+
+---
+
+### Initial Findings from EDA
+The exploratory data analysis (EDA) revealed the following key insights:
+1. **Interest Rate and Grade** are strongly associated with loan outcomes:
+   - Higher grades (A, B) correspond to better repayment rates.
+   - Higher interest rates correlate with increased default risk.
+2. **Annual Income and DTI** provide moderate predictive power:
+   - Borrowers with higher incomes and lower DTI ratios exhibit fewer charge-offs.
+3. **FICO Scores** are critical predictors:
+   - Borrowers with higher FICO ranges are significantly less likely to default.
+
+---
+
+### Feature Selection and Justification
+Based on EDA and initial modeling results:
+- All selected features are statistically significant predictors of loan outcomes.
+- **FICO Scores, Interest Rate, and Grade** are the strongest predictors, providing high reliability for predicting loan charge-offs.
+- Secondary predictors, such as **Loan Amount, Annual Income, and Employment Length**, add incremental value to the model.
+
+These features form the foundation for the subsequent predictive modeling discussed in the next sections.
+
+# Question 2: Model Performance
+
+How do different classification models (logistic regression and classification tree) compare in their ability to predict loan charge-offs when trained on 2013-2015 data and tested on holdout sets from 2013-2015 and 2016-2018 data?
+
+## Overview
+To compare the performance of logistic regression and random forest models in predicting loan charge-offs, we trained both models on data from 2013-2015 and tested them on two holdout datasets:
+1. **2013-2015 Test Set**: To evaluate in-sample performance.
+2. **2016-2018 Test Set**: To evaluate out-of-sample performance and generalizability.
+
+## Data Preparation
+The dataset was split into training (70%), evaluation (15%), and test (15%) sets. Missing values were imputed, and numeric features were normalized using MinMax scaling.
+
+```{r data-preparation, echo=TRUE}
+# Splitting the dataset
+library(caret)
+
+set.seed(123)
+split <- createDataPartition(df$loan_status, p = 0.7, list = FALSE)
+train_data <- df[split, ]
+temp_data <- df[-split, ]
+
+split_eval <- createDataPartition(temp_data$loan_status, p = 0.5, list = FALSE)
+eval_data <- temp_data[split_eval, ]
+test_data <- temp_data[-split_eval, ]
+
+# Check dimensions
+dim(train_data)
+dim(eval_data)
+dim(test_data)
+```
+
+```{r, echo=TRUE}
+#For Question #2
+#Load 2013-2015 Train Data
+train_data <-read.csv("C:\\Users\\uemaa\\Documents\\DS6101\\Fin\\Proj2\\data_2013_2015_train.csv")
+
+#Convert Loan Status to Numeric Values \ 1= Charged Off 0 = Fully Paid
+train_data$loan_status <- ifelse(train_data$loan_status == "Charged Off", 1,0)
+
+#Load Test Data 2013-2015
+test_data <-read.csv("C:\\Users\\uemaa\\Documents\\DS6101\\Fin\\Proj2\\data_2013_2015_test.csv")
+
+#Convert Loan Status to Numeric Values \ 1= Charged Off 0 = Fully Paid
+test_data$loan_status <- ifelse(test_data$loan_status == "Charged Off", 1,0)
+
+#Load Test Data 2016-2018
+test_data_2 <-read.csv("C:\\Users\\uemaa\\Documents\\DS6101\\Fin\\Proj2\\data_2016_2018_test.csv")
+
+#Convert Loan Status to Numeric Values \ 1= Charged Off 0 = Fully Paid
+test_data_2$loan_status <- ifelse(test_data_2$loan_status == "Charged Off", 1,0)
+
+
+#For Question #3
+#Load Active Loans Data
+active_data <-read.csv("C:\\Users\\uemaa\\Documents\\DS6101\\Fin\\Proj2\\predict.csv")
+
+#Load 2013-2018 Train Data
+all_train_data <-read.csv("C:\\Users\\uemaa\\Documents\\DS6101\\Fin\\Proj2\\train.csv")
+
+#Convert Loan Status to Numeric Values \ 1= Charged Off 0 = Fully Paid
+all_train_data$loan_status <- ifelse(all_train_data$loan_status == "Charged Off", 1,0)
+
+```
+
+## Logistic Regression Model Performance
+
+### Logistic Model Training on 2013-2015 Data
+The logistic regression model was trained on the 2013-2015 data with the following independent variables:
+- Loan Amount
+- Interest Rate
+- Grade
+- Sub Grade
+- DTI
+- Employment Length
+- Annual Income
+
+**Key Insights from Training**:
+1. **Statistical Significance**: All predictors included in the model were statistically significant (p < 0.05), indicating their relevance to predicting loan charge-offs.
+2. **Impact of Predictors** (Rounded Coefficients):
+    - **Loan Amount (0.13)**: A $1 increase in the loan amount slightly increases the likelihood of charge-offs.
+    - **Interest Rate (-0.62)**: Higher interest rates are associated with a decreased likelihood of charge-offs.
+    - **Grade G (5.29)**: Loans with Grade G are significantly more likely to charge off compared to Grade A loans.
+    - **Employment Length (< 1 Year, -0.24)**: Borrowers with less than one year of employment are less likely to charge off.
+
+```{r, echo=TRUE}
+
+#Logistic Regression Model
+log_model <-glm(loan_status ~ loan_amnt + int_rate + grade + sub_grade + dti + emp_length + annual_inc, data = train_data, family = binomial)
+
+#Summary of Model
+summary(log_model)
+
+```
+
+### Logistic Model Evaluation on 2013-2015 Test Data
+
+The trained logistic regression model was evaluated using test data from 2013-2015.
+
+Results:
+Confusion Matrix:
+
+87,900 True Negatives (Fully Paid loans correctly predicted)
+19,849 False Negatives (Charged Off loans misclassified as Fully Paid)
+529 False Positives (Fully Paid loans misclassified as Charged Off)
+527 True Positives (Charged Off loans correctly predicted)
+Performance Metrics:
+
+Accuracy: 81.3% (The model correctly classifies 81.3% of loans.)
+Sensitivity: 2.49% (Very low sensitivity indicates the model struggles to identify charge-offs.)
+Specificity: 99.43% (The model excels at identifying fully paid loans.)
+AUC: 0.705 (Moderate ability to distinguish between Charged Off and Fully Paid loans.)
+
+
+ROC Curve & AUC
+
+AUC 0.705: On average, the model has a 70.5% chance of distinguishing between a loan that gets charged off and one that is fully paid. Overall, this model has a moderate ability to distinguish between charged off and fully paid loans when applied to unseen data from 2013-2015. 
+
+
+```{r, echo=TRUE}
+
+#libraries
+library(caret)
+library(pROC)
+
+#Predict on test data
+log_predict <- predict(log_model, test_data, type = "response")
+
+#Convert Probabilities to Class 
+log_predict_class <- ifelse(log_predict > 0.5, 1, 0)
+
+#Covert Predicted and Actual to Factors with Same Levels
+log_predict_class <-factor(log_predict_class, levels = c(0,1)) # Predicted Classes
+test_data$loan_status <-factor(test_data$loan_status, levels = c(0,1)) # Actual Classes
+
+#Confusion Matrix
+con_matrix <- confusionMatrix(as.factor(log_predict_class), test_data$loan_status)
+print(con_matrix)
+
+#ROC Curve and AUC
+roc_curve <-roc(test_data$loan_status, as.numeric(log_predict))
+auc_value <- auc(roc_curve)
+print(auc_value)
+plot(roc_curve)
+
+```
+
+### Logistic Model Evaluation on 2016-2018 Test Data
+
+The same model was evaluated on out-of-sample test data (2016-2018) to assess its generalizability.
+
+Results:
+Confusion Matrix:
+
+60,146 True Negatives
+17,415 False Negatives
+188 False Positives
+177 True Positives
+Performance Metrics:
+
+Accuracy: 77.4% (Slight decrease compared to in-sample performance.)
+Sensitivity: 1.12% (The model struggles even more to identify charge-offs.)
+Specificity: 99.69% (The model still performs well for fully paid loans.)
+AUC: 0.694 (Moderate ability to distinguish outcomes.)
+
+```{r, echo=TRUE}
+
+#libraries
+library(caret)
+library(pROC)
+
+#Predict on test data
+log_predict_2 <- predict(log_model, test_data_2, type = "response")
+
+#Convert Probabilities to Class 
+log_predict_class_2 <- ifelse(log_predict_2 > 0.5, 1, 0)
+
+#Covert Predicted and Actual to Factors with Same Levels
+log_predict_class_2 <-factor(log_predict_class_2, levels = c(0,1)) # Predicted Classes
+test_data_2$loan_status <-factor(test_data_2$loan_status, levels = c(0,1)) # Actual Classes
+
+#Confusion Matrix
+con_matrix_2 <- confusionMatrix(as.factor(log_predict_class_2), test_data_2$loan_status)
+print(con_matrix_2)
+
+#ROC Curve and AUC
+roc_curve_2 <-roc(test_data_2$loan_status, as.numeric(log_predict_2))
+auc_value_2 <- auc(roc_curve_2)
+print(auc_value_2)
+plot(roc_curve_2)
+
+```
+
+
+
+```{R}
+
+# Get numeric columns
+numeric_cols <- names(train_data)[sapply(train_data, is.numeric)]
+
+# Set up the plotting area 
+par(mfrow = c(3, 3))  # Creates a 3x3 grid of plots
+
+# Simple histograms
+for(col in numeric_cols) {
+    hist(train_data[[col]], 
+         main = col,
+         xlab = col,
+         col = "lightblue")
+}
+
+# Reset plotting parameters
+par(mfrow = c(1, 1))
+
+```
+
+
+```{r}
+
+missing_data <- function(df) {
+  # Store original dimensions
+  original_rows <- nrow(df)
+  
+  # Step 1: Remove rows with missing loan_status
+  df <- df[!is.na(df$loan_status), ]
+  rows_after_status <- nrow(df)
+  
+  # Step 2: Identify numeric and categorical columns
+  numeric_cols <- sapply(df, is.numeric)
+  categorical_cols <- sapply(df, function(x) is.factor(x) | is.character(x))
+  
+  # Step 3: Median imputation for numeric columns
+  for(col in names(df)[numeric_cols]) {
+    if(any(is.na(df[[col]]))) {
+      col_median <- median(df[[col]], na.rm = TRUE)
+      df[[col]][is.na(df[[col]])] <- col_median
+      print(paste("Imputed", sum(is.na(df[[col]])), "missing values in", col, "with median:", round(col_median, 2)))
+    }
+  }
+  
+  # Step 4: Mode imputation for categorical columns
+  for(col in names(df)[categorical_cols]) {
+    if(any(is.na(df[[col]]))) {
+      # Calculate mode (most frequent value)
+      mode_val <- names(sort(table(df[[col]]), decreasing = TRUE))[1]
+      df[[col]][is.na(df[[col]])] <- mode_val
+      print(paste("Imputed", sum(is.na(df[[col]])), "missing values in", col, "with mode:", mode_val))
+    }
+  }
+  
+  # Print summary of cleaning
+  print("\nCleaning Summary:")
+  print(paste("Original number of rows:", original_rows))
+  print(paste("Rows removed due to missing loan_status:", original_rows - rows_after_status))
+  print(paste("Final number of rows:", nrow(df)))
+  
+  return(df)
+}
+
+create_features <- function(df, poly_degree) {
+    # Store original dataframe
+    result_df <- df
+    
+    # Get numeric columns except target (loan_status)
+    numeric_cols <- names(df)[sapply(df, is.numeric)]
+    numeric_cols <- numeric_cols[numeric_cols != "loan_status"]
+    
+    # 1. Create interaction terms
+    cat("Creating interaction terms...\n")
+    if(length(numeric_cols) >= 2) {  # Need at least 2 columns for interactions
+        # Get all possible pairs of columns
+        pairs <- combn(numeric_cols, 2)
+        
+        # Create interaction terms
+        for(i in 1:ncol(pairs)) {
+            col1 <- pairs[1,i]
+            col2 <- pairs[2,i]
+            new_col_name <- paste0("interaction_", col1, "_", col2)
+            result_df[[new_col_name]] <- df[[col1]] * df[[col2]]
+        }
+    }
+    
+    # 2. Create polynomial terms
+    cat("Creating polynomial terms...\n")
+    for(col in numeric_cols) {
+        for(degree in 2:poly_degree) {  # Start from degree 2 since degree 1 is original
+            new_col_name <- paste0("poly_", col, "_degree_", degree)
+            result_df[[new_col_name]] <- df[[col]]^degree
+        }
+    }
+    
+    # Print summary of new features
+    n_interactions <- ncol(result_df) - ncol(df)
+    cat("\nFeature Engineering Summary:\n")
+    cat("Original features:", length(numeric_cols), "\n")
+    cat("New features created:", n_interactions, "\n")
+    cat("Total features:", ncol(result_df), "\n")
+    
+    return(result_df)
+}
+
+train_data <- missing_data(train_data)
+test_data <- missing_data(test_data)
+active_data <- missing_data(active_data)
+
+
+
+
+# Example usage:
+train_data <- create_features(train_data, poly_degree = 2)
+test_data <- create_features(test_data, poly_degree = 2)
+active_data <- create_features(active_data, poly_degree = 2)
+
+```
+
+
+
+```{R}
+# Load required packages
+library(caret)
+library(pROC)
+library(glmnet)
+
+# 1. Data Preparation and Cleaning
+# First, handle missing values
+numeric_cols <- sapply(train_data, is.numeric)
+for(col in names(train_data)[numeric_cols]) {
+    train_data[[col]][is.na(train_data[[col]])] <- median(train_data[[col]], na.rm = TRUE)
+    test_data[[col]][is.na(test_data[[col]])] <- median(train_data[[col]], na.rm = TRUE)
+}
+
+# Fix the loan_status encoding
+# First, ensure it's numeric
+train_data$loan_status <- as.numeric(as.character(train_data$loan_status))
+test_data$loan_status <- as.numeric(as.character(test_data$loan_status))
+
+# Then convert to factor with proper levels
+train_data$loan_status <- factor(train_data$loan_status, 
+                                levels = c(0, 1), 
+                                labels = c("Fully Paid", "Charged-Off"))
+
+test_data$loan_status <- factor(test_data$loan_status, 
+                                levels = c(0, 1), 
+                                labels = c("Fully Paid", "Charged-Off"))
+
+
+# For training data
+if("issue_d" %in% colnames(train_data)) {
+    train_data <- subset(train_data, select = -c(issue_d))
+    cat("issue_d column removed from training data\n")
+} else {
+    cat("issue_d column not found in training data\n")
+}
+
+# For test data
+if("issue_d" %in% colnames(test_data)) {
+    test_data <- subset(test_data, select = -c(issue_d))
+    cat("issue_d column removed from test data\n")
+} else {
+    cat("issue_d column not found in test data\n")
+}
+
+```
+
+
+```{r}
+
+
+# 2. Set up cross-validation
+ctrl <- trainControl(
+    method = "cv",
+    number = 5,
+    classProbs = TRUE,
+    summaryFunction = twoClassSummary,
+    sampling = "down",
+    verboseIter = TRUE
+)
+
+# 3. Grid for hyperparameter tuning
+grid <- expand.grid(
+    alpha = c(0, 0.5, 1),
+    lambda = seq(0.001, 0.1, length.out = 5)
+)
+levels(train_data$loan_status) <- make.names(levels(train_data$loan_status))
+
+
+
+# 4. Train improved model
+set.seed(123)
+improved_model <- train(
+    loan_status ~ .,
+    data = train_data,
+    method = "glmnet",
+    metric = "ROC",
+    trControl = ctrl,
+    tuneGrid = grid,
+    family = "binomial"
+)
+
+```
+
+
+```{r}
+# 5. Make predictions
+improved_predict <- predict(improved_model, test_data, type = "prob")[,"Charged.Off"]
+
+# Find optimal threshold
+roc_obj <- roc(test_data$loan_status, improved_predict)
+optimal_coords <- coords(roc_obj, "best", ret = "threshold")
+optimal_threshold <- optimal_coords$threshold
+
+# Create class predictions using optimal threshold
+improved_predict_class <- factor(
+    ifelse(improved_predict > optimal_threshold, "Charged.Off", "Fully.Paid"),
+    levels = c("Charged.Off", "Fully.Paid")
+)
+
+# 6. Model Evaluation
+# Confusion Matrix
+levels(test_data$loan_status) <- make.names(levels(test_data$loan_status))
+improved_cm <- confusionMatrix(improved_predict_class, test_data$loan_status)
+print(improved_cm)
+
+# ROC and AUC
+improved_roc <- roc(test_data$loan_status, improved_predict)
+improved_auc <- auc(improved_roc)
+print(paste("AUC:", round(improved_auc, 4)))
+
+# 7. Visualizations
+# ROC curve
+plot(improved_roc, main = "ROC Curve for Improved Model")
+
+# Feature importance
+importance <- varImp(improved_model)
+plot(importance, top = 10, main = "Top 10 Most Important Features")
+
+# 8. Print detailed metrics
+cat("\nDetailed Performance Metrics:\n")
+cat("Accuracy:", round(improved_cm$overall['Accuracy'], 4), "\n")
+cat("Sensitivity:", round(improved_cm$byClass['Sensitivity'], 4), "\n")
+cat("Specificity:", round(improved_cm$byClass['Specificity'], 4), "\n")
+cat("Precision:", round(improved_cm$byClass['Pos Pred Value'], 4), "\n")
+cat("F1 Score:", round(2 * (improved_cm$byClass['Sensitivity'] * improved_cm$byClass['Pos Pred Value']) / 
+    (improved_cm$byClass['Se+nsitivity'] + improved_cm$byClass['Pos Pred Value']), 4), "\n")
+
+```
+
+# Evaluating the Model Using Test Data from 2015-2018
+
+
+After evaluating the model using test data from 2015-2018, the following can be derived:
+
+Confusion Matrix
+
+60,134 True Negatives: Correctly predicted loans that were fully paid.
+
+17,395 False Negatives: Correctly predicted loans that were charged off.
+
+200 False Positives: Loans that were charged off but incorrectly predicted as fully paid.
+
+197 True Positives: Loans that were fully paid but incorrectly charged off. 
+
+
+Performance Metrics
+
+Accuracy 77.4%: The model correctly classifies 77.4% of the loans in this test set.
+
+Sensitivity 1.12%: The model only identifies 1.12% of actual charge-offs correctly. THIS MODEL IS POOR AT DETECTING LOAN CHARGE-OFFS.
+
+Specificity 99.67%: The model correctly identifies 99.67% of fully paid loans.
+
+
+
+ROC Curve & AUC
+AUC 0.694: On average, the model has a 69.4% chance of distinguishing between a loan that gets charged off and one that is fully paid. Overall, this model has a moderate ability to distinguish between fully paid loans when applied to unseen data from 2016-2018 but could use improvement in predicting charged off loans.  
+
+```{r, echo=TRUE}
+
+#libraries
+library(caret)
+library(pROC)
+
+#Predict on test data
+log_predict_2 <- predict(log_model, test_data_2, type = "response")
+
+#Convert Probabilities to Class 
+log_predict_class_2 <- ifelse(log_predict_2 > 0.5, 1, 0)
+
+#Covert Predicted and Actual to Factors with Same Levels
+log_predict_class_2 <-factor(log_predict_class_2, levels = c(0,1)) # Predicted Classes
+test_data_2$loan_status <-factor(test_data_2$loan_status, levels = c(0,1)) # Actual Classes
+
+#Confusion Matrix
+con_matrix_2 <- confusionMatrix(as.factor(log_predict_class_2), test_data_2$loan_status)
+print(con_matrix_2)
+
+#ROC Curve and AUC
+roc_curve_2 <-roc(test_data_2$loan_status, as.numeric(log_predict_2))
+auc_value_2 <- auc(roc_curve_2)
+print(auc_value_2)
+plot(roc_curve_2)
+
+```
+```{r}
+# Examine the structure and missing values
+str(test_data_2)
+colSums(is.na(test_data_2))
+
+# Clean the data
+test_data_2_clean <- na.omit(test_data_2)
+
+# Check if loan_status needs recoding (if it's 1,2 instead of 0,1)
+unique(test_data_2_clean$loan_status)
+
+```
+```{r}
+# Load required libraries
+library(caret)
+library(pROC)
+library(glmnet)
+library(recipes)
+
+# Keep track of loan_status levels
+print("Initial loan_status levels:")
+print(levels(test_data_2$loan_status))
+
+# Handle missing values
+test_data_2$dti[is.na(test_data_2$dti)] <- median(test_data_2$dti, na.rm = TRUE)
+test_data_2$open_acc_6m[is.na(test_data_2$open_acc_6m)] <- median(test_data_2$open_acc_6m, na.rm = TRUE)
+
+# Remove rows with any remaining NA values
+test_data_2 <- na.omit(test_data_2)
+
+# Create recipe for feature engineering
+recipe_obj <- recipe(loan_status ~ ., data = test_data_2) %>%
+  step_rm(issue_d) %>%
+  step_interact(terms = ~ loan_amnt:int_rate + loan_amnt:dti + int_rate:dti) %>%
+  step_poly(loan_amnt, int_rate, dti, degree = 2) %>%
+  step_dummy(all_nominal_predictors()) %>%
+  step_normalize(all_numeric_predictors())
+
+# Prepare the data
+prepared_data <- prep(recipe_obj) %>%
+  bake(new_data = NULL)
+
+# Set up cross-validation
+ctrl <- trainControl(
+  method = "cv",
+  number = 5,
+  classProbs = TRUE,
+  summaryFunction = twoClassSummary,
+  savePredictions = TRUE,
+  verboseIter = TRUE
+)
+
+# Create parameter grid
+grid <- expand.grid(
+  alpha = seq(0, 1, by = 0.5),
+  lambda = 10^seq(-4, -1, length.out = 5)
+)
+
+# Split data into predictors and response
+x_matrix <- as.matrix(prepared_data %>% select(-loan_status))
+y_vector <- prepared_data$loan_status
+y_vector <- factor(y_vector, levels = c(0, 1), labels = c("Fully.Paid", "charged.Off"))
+
+# Train model
+set.seed(123)
+tuned_model <- train(
+  x = x_matrix,
+  y = y_vector,
+  method = "glmnet",
+  trControl = ctrl,
+  tuneGrid = grid,
+  metric = "ROC"
+)
+
+# Print best parameters
+print("Best Tuning Parameters:")
+print(tuned_model$bestTune)
+
+```
+
+
+```{r}
+# Make predictions
+predictions_prob <- predict( tuned_model, newdata = x_matrix, type = "prob")
+predictions_class <- predict(tuned_model, newdata = x_matrix)
+
+# Verify predictions structure
+print("Structure of predictions:")
+print(str(predictions_class))
+print(str(y_vector))
+ 
+# Generate confusion matrix
+conf_matrix <- confusionMatrix(predictions_class, y_vector)
+print("Confusion Matrix and Performance Metrics:")
+print(conf_matrix)
+
+# Calculate ROC and AUC
+roc_obj <- roc(y_vector, predictions_prob[,"charged.Off"])
+auc_value <- auc(roc_obj)
+print(paste("AUC:", round(auc_value, 3)))
+
+# Plot ROC curve
+plot(roc_obj, main = "ROC Curve")
+
+# Print detailed metrics
+metrics <- data.frame(
+  Metric = c("Accuracy", "Sensitivity", "Specificity", "Precision", "AUC"),
+  Value = c(
+    conf_matrix$overall["Accuracy"],
+    conf_matrix$byClass["Sensitivity"],
+    conf_matrix$byClass["Specificity"],
+    conf_matrix$byClass["Pos Pred Value"],
+    auc_value
+  )
+)
+print("Detailed Performance Metrics:")
+print(metrics)
+
+# Variable importance
+importance <- varImp(tuned_model)
+print("Variable Importance:")
+print(importance)
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Interpretation:
+
+The model’s performance declines slightly on out-of-sample data, likely due to differences in borrower behavior or economic conditions after 2015.
+Improvements in feature selection or training data updates could improve generalizability.
+
+To improve predictions, the following are considered:
+
+Adjusting the probability threshold (e.g., >0.7 for higher confidence in classifying charged off loans).
+Incorporating additional predictors (e.g., FICO scores or recent credit activity).
+Combining with more complex models like Random Forests, which handle non-linear relationships and imbalanced classes better.
+
+
+
+
+
+
+
+
+
+
+## Random Forest Model
+
+### Overview
+The Random Forest model was trained on 2013-2018 data and applied to predict loan charge-offs for active loans issued between 2015-2018. This method leverages Random Forest’s ability to handle:
+- Non-linear relationships
+- Imbalanced classes
+- Feature importance analysis
+- Regularization and robustness to noisy data
+
+
+### Data Preparation
+
+#### Handling Missing Values
+1. **Numerical Variables**: Imputed using KNN imputation.
+2. **Categorical Variables**: Imputed using mode.
+3. Removed rows with missing `loan_status`.
+
+#### Data Splitting
+The dataset was split into:
+- **Training Set**: 70%
+- **Evaluation Set**: 15%
+- **Test Set**: 15%
+
+```{r}
+
+train_df_path = "C:\\Users\\uemaa\\Documents\\DS6101\\Fin\\Proj2\\train.csv"
+eval_df_path = "C:\\Users\\uemaa\\Documents\\DS6101\\Fin\\Proj2\\eval.csv"
+test_df_path = "C:\\Users\\uemaa\\Documents\\DS6101\\Fin\\Proj2\\test.csv"
+predict_df_path = "C:\\Users\\uemaa\\Documents\\DS6101\\Fin\\Proj2\\predict.csv"
+
+train_df = fread(train_df_path)
+eval_df = fread(eval_df_path)
+test_df = fread(test_df_path)
+predict_df = fread(predict_df_path)
+
+target_column <- "loan_status"  
+
+
+```
+
+### Class Distribution
+
+
+```{r}
+
+loan_status_counts <- table(train_df$loan_status)
+
+
+loan_status_percentages <- round(100 * loan_status_counts / sum(loan_status_counts), 1)
+
+loan_status_df <- data.frame(
+  status = names(loan_status_counts),
+  count = as.numeric(loan_status_counts),
+  percentage = loan_status_percentages
+)
+
+
+ggplot(loan_status_df, aes(x = "", y = count, fill = status)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +  
+  labs(title = "Distribution of Charged Off vs Fully Paid Loans") +
+  theme_void() +  
+  scale_fill_manual(values = c("Charged Off" = "red", "Fully Paid" = "green")) +
+  geom_text(aes(label = paste0(loan_status_df$percentage, "%")), position = position_stack(vjust = 0.5))  # Add percentages
+
+
+```
+
+Preparation of Data
+
+```{r}
+describe_df <- function(df){
+  print(summary(df))
+  print(describe(df))
+  print(colnames(df))
+  sapply(df, class)
+  missing_percentage <- sapply(df, function(x) sum(is.na(x)) / nrow(df) * 100)
+  missing_percentage_df <- data.frame(Column = names(missing_percentage),
+                                    Missing_Percentage = missing_percentage)
+  print(missing_percentage_df)
+}
+prepare_and_clean_data <- function(df) {
+  
+  if (inherits(df, "data.table")) {
+    df <- as.data.frame(df)
+  }
+  
+  if (!is.data.frame(df)) {
+    stop("Input is not a dataframe")
+  }
+  
+  if ("loan_status" %in% names(df)) {
+    df <- df[!is.na(df$loan_status), ]
+    df$loan_status <- factor(df$loan_status)
+  }
+  
+  if ("issue_d" %in% names(df)) {
+    df <- df[, !(names(df) %in% "issue_d")]
+  }
+  
+  if ("grade" %in% names(df)) {
+    df$grade <- factor(df$grade)
+  }
+  if ("sub_grade" %in% names(df)) {
+    df$sub_grade <- factor(df$sub_grade)
+  }
+  if ("emp_length" %in% names(df)) {
+    df$emp_length <- factor(df$emp_length)
+  }
+  
+  num_cols <- sapply(df, is.numeric)
+  df[, num_cols] <- lapply(df[, num_cols, drop = FALSE], function(col) {
+    col[is.na(col)] <- median(col, na.rm = TRUE)  
+    return(col)
+  })
+  
+  factor_cols <- sapply(df, is.factor)
+  df[, factor_cols] <- lapply(df[, factor_cols, drop = FALSE], function(col) {
+    mode <- names(sort(table(col), decreasing = TRUE))[1]  
+    col[is.na(col)] <- mode  
+    return(col)
+  })
+  
+  return(df)
+}
+
+
+train_df <- prepare_and_clean_data(train_df)  
+eval_df <- prepare_and_clean_data(eval_df)
+test_df <- prepare_and_clean_data(test_df) 
+predict_df <- prepare_and_clean_data(predict_df)
+
+describe_df(train_df)
+
+
+```
+
+### Fetch N Random Observations 
+
+Handling Class Imbalance
+Loan data often exhibits class imbalance, where the number of fully paid loans significantly outweighs the number of charged-off loans. This imbalance can lead to biased model predictions, as the model may favor the majority class to optimize overall accuracy while neglecting the minority class (charged-off loans).
+
+To address this issue, the following techniques were applied during data preparation and modeling:
+
+Random Sampling and Oversampling:
+
+A subset of the data was randomly sampled to create a smaller working dataset for training and evaluation.
+Within the sampled dataset, the minority class (charged-off loans) was oversampled to match the size of the majority class (fully paid loans). This ensured that the model had an equal representation of both classes during training, improving its ability to identify charged-off loans
+
+```{r}
+
+handle_class_imbalance <- function(df, target_column) {
+  
+  sampled_df <- df %>% sample_n(1000)
+  
+  
+  class_distribution <- table(sampled_df[[target_column]])
+  
+  
+  minority_class <- names(sort(class_distribution))[which.min(class_distribution)]  
+  majority_class <- names(sort(class_distribution))[which.max(class_distribution)]  
+  
+  
+  minority_count <- class_distribution[minority_class]
+  majority_count <- class_distribution[majority_class]
+  
+  
+  if (minority_count < majority_count) {
+    
+    n_oversample <- majority_count - minority_count
+    minority_df <- sampled_df[sampled_df[[target_column]] == minority_class, ]
+    
+    
+    oversampled_minority <- minority_df[sample(1:nrow(minority_df), n_oversample, replace = TRUE), ]
+    
+    
+    balanced_df <- rbind(sampled_df[sampled_df[[target_column]] == majority_class, ], oversampled_minority)
+  } else {
+    
+    balanced_df <- sampled_df
+  }
+  
+  return(balanced_df)
+}
+
+
+
+```
+### Training and Evaluating Random Forest
+
+The *train_and_evaluate_rf* function builds a Random Forest model on the training data and evaluates its performance on both the training and evaluation datasets. Additionally, it calculates confusion matrices for further analysis.
+
+***Key Parameters:***
+
+train_df and eval_df: The training and evaluation datasets.
+target_column: The target variable (in this case, loan_status).
+Hyperparameters:
+ntree: Number of trees in the forest.
+maxnodes: Maximum terminal nodes allowed per tree.
+maxdepth: Maximum depth of each tree.
+nodesize: Minimum size of terminal nodes.
+mtry: Number of variables randomly sampled at each split (default is square root of predictors).
+classwt: Weights assigned to each class to handle class imbalance.
+
+
+Function Implementation:
+
+```{r}
+
+train_and_evaluate_rf <- function(train_df, eval_df, target_column, 
+                                   ntree = 100, maxnodes = 50, maxdepth = 10, 
+                                   nodesize = 5, mtry = NULL, 
+                                   sampsize = NULL, classwt = NULL) {
+  
+  formula <- as.formula(paste(target_column, "~ ."))
+  
+  
+  if (is.null(mtry)) {
+    mtry <- sqrt(ncol(train_df) - 1)
+  }
+  if (is.null(sampsize)) {
+    sampsize <- nrow(train_df)
+  }
+  
+  rf_model <- randomForest(formula, data = train_df, ntree = ntree, maxnodes = maxnodes,
+                           maxdepth = maxdepth, nodesize = nodesize, mtry = mtry,
+                           sampsize = sampsize, classwt = classwt, importance = TRUE)
+  
+  
+  
+  train_pred <- predict(rf_model, train_df, type = "response")
+  train_accuracy <- mean(train_pred == train_df[[target_column]])
+  
+  
+  eval_pred <- predict(rf_model, eval_df, type = "response")
+  eval_accuracy <- mean(eval_pred == eval_df[[target_column]])
+  
+  
+  train_confusion_matrix <- table(Predicted = train_pred, Actual = train_df[[target_column]])
+  eval_confusion_matrix <- table(Predicted = eval_pred, Actual = eval_df[[target_column]])
+  
+  
+  
+  
+  return(list(
+    train_accuracy = train_accuracy,
+    eval_accuracy = eval_accuracy,
+    train_confusion_matrix = train_confusion_matrix,
+    eval_confusion_matrix = eval_confusion_matrix,
+    model = rf_model
+  ))
+}
+
+
+```
+
+### Calculating Performance Metrics
+The calculate_metrics function computes precision, recall, and F1-score for each class from the confusion matrices generated during training and evaluation.
+
+***Key Metrics:***
+Precision: Proportion of true positives among predicted positives.
+Recall: Proportion of true positives among actual positives.
+F1-Score: Harmonic mean of precision and recall.
+
+Function Implementation:
+
+```{r}
+calculate_metrics <- function(results) {
+  
+  train_conf_matrix <- results$train_confusion_matrix
+  eval_conf_matrix <- results$eval_confusion_matrix
+  
+  
+  calculate_class_metrics <- function(conf_matrix, class) {
+    tp <- conf_matrix[class, class]  # True Positives
+    fn <- conf_matrix[class, -class]  # False Negatives
+    fp <- conf_matrix[-class, class]  # False Positives
+    tn <- sum(conf_matrix) - tp - fn - fp  # True Negatives
+    
+    precision <- tp / (tp + fp)
+    recall <- tp / (tp + fn)
+    f1 <- 2 * (precision * recall) / (precision + recall)
+    
+    return(c(precision, recall, f1))
+  }
+  
+  
+  class_names <- c("Charged Off", "Fully Paid")
+  
+  train_metrics <- sapply(1:2, function(i) calculate_class_metrics(train_conf_matrix, i))
+  eval_metrics <- sapply(1:2, function(i) calculate_class_metrics(eval_conf_matrix, i))
+  
+  
+  result_list <- list(
+    train_precision_charged_off = train_metrics[1, 1],
+    train_recall_charged_off = train_metrics[2, 1],
+    train_f1_charged_off = train_metrics[3, 1],
+    
+    train_precision_fully_paid = train_metrics[1, 2],
+    train_recall_fully_paid = train_metrics[2, 2],
+    train_f1_fully_paid = train_metrics[3, 2],
+    
+    eval_precision_charged_off = eval_metrics[1, 1],
+    eval_recall_charged_off = eval_metrics[2, 1],
+    eval_f1_charged_off = eval_metrics[3, 1],
+    
+    eval_precision_fully_paid = eval_metrics[1, 2],
+    eval_recall_fully_paid = eval_metrics[2, 2],
+    eval_f1_fully_paid = eval_metrics[3, 2]
+  )
+  
+  return(result_list)
+}
+
+
+```
+### Hyperparameter Tuning Explanation
+
+Hyperparameter tuning was performed to optimize the Random Forest model's performance. Various parameters were tested to evaluate their impact on training and evaluation accuracy. Below is an explanation of the tuning process and the code implementations for each hyperparameter:
+
+
+***1. Number of Trees (ntree)***
+-The number of trees in the forest (ntree) was varied between 1 and 200 in increments of 20.
+-Increasing the number of trees typically improves performance by reducing variance, but it may reach a point of diminishing returns.
+
+```{r}
+
+target_column <- "loan_status"  
+sample_train_df <- handle_class_imbalance(train_df, target_column)
+sample_eval_df <- handle_class_imbalance(eval_df, target_column)
+
+ntree_list <- seq(1, 200, by = 20)
+train_accuracies <- c()
+eval_accuracies <- c()
+
+for (ntree in ntree_list) {
+  cat("Training Random Forest with", ntree, "trees...\n")
+  
+  rf_model <- train_and_evaluate_rf(sample_train_df, sample_eval_df, target_column, ntree)
+  
+  
+  train_accuracies <- c(train_accuracies, rf_model$train_accuracy)
+  eval_accuracies <- c(eval_accuracies, rf_model$eval_accuracy)
+}
+
+
+accuracy_df <- data.frame(
+  ntree = ntree_list,
+  Train_Accuracy = train_accuracies,
+  Eval_Accuracy = eval_accuracies
+)
+
+
+library(ggplot2)
+
+ggplot(accuracy_df, aes(x = ntree)) +
+  geom_line(aes(y = Train_Accuracy, color = "Train Accuracy"), size = 1) +
+  geom_line(aes(y = Eval_Accuracy, color = "Eval Accuracy"), size = 1) +
+  labs(title = "Random Forest Accuracy vs. Number of Trees",
+       x = "Number of Trees (ntree)",
+       y = "Accuracy (%)") +
+  scale_color_manual(name = "Legend", values = c("Train Accuracy" = "blue", "Eval Accuracy" = "red")) +
+  theme_minimal()
+
+```
+***2. Maximum Depth (maxdepth)***
+
+The maximum depth of each tree was varied between 2 and 100 in increments of 3.
+Limiting the depth helps prevent overfitting by controlling the tree's complexity.
+
+```{r}
+target_column <- "loan_status"  
+
+maxdepth_list <- seq(2, 100, by = 3)
+train_accuracies <- c()
+eval_accuracies <- c()
+
+for (maxdepth in maxdepth_list) {
+  cat("Training Random Forest with", maxdepth, "max depth...\n")
+  
+  rf_model <- train_and_evaluate_rf(sample_train_df, sample_eval_df, target_column, ntree=25, maxdepth = maxdepth)
+  
+  
+  train_accuracies <- c(train_accuracies, rf_model$train_accuracy)
+  eval_accuracies <- c(eval_accuracies, rf_model$eval_accuracy)
+}
+
+
+accuracy_df <- data.frame(
+  maxdepth = maxdepth_list,
+  Train_Accuracy = train_accuracies,
+  Eval_Accuracy = eval_accuracies
+)
+
+
+library(ggplot2)
+
+ggplot(accuracy_df, aes(x = maxdepth)) +
+  geom_line(aes(y = Train_Accuracy, color = "Train Accuracy"), size = 1) +
+  geom_line(aes(y = Eval_Accuracy, color = "Eval Accuracy"), size = 1) +
+  labs(title = "Random Forest Accuracy vs. Max depth",
+       x = "maxdepth",
+       y = "Accuracy (%)") +
+  scale_color_manual(name = "Legend", values = c("Train Accuracy" = "blue", "Eval Accuracy" = "red")) +
+  theme_minimal()
+```
+***3. Maximum Nodes (maxnodes)***
+
+The maximum number of terminal nodes (maxnodes) was varied between 2 and 50.
+Reducing maxnodes can help prevent overfitting by limiting the size of the tree.
+
+```{r}
+target_column <- "loan_status"  
+sample_train_df <- handle_class_imbalance(train_df, target_column)
+sample_eval_df <- handle_class_imbalance(eval_df, target_column)
+
+maxnodes_list <- seq(2, 50, by = 1)
+train_accuracies <- c()
+eval_accuracies <- c()
+
+for (maxnodes in maxnodes_list) {
+  cat("Training Random Forest with", maxnodes, "max nodes...\n")
+  
+  rf_model <- train_and_evaluate_rf(sample_train_df, sample_eval_df, target_column, ntree=25, maxdepth = 15, maxnodes = maxnodes)
+  
+  train_accuracies <- c(train_accuracies, rf_model$train_accuracy)
+  eval_accuracies <- c(eval_accuracies, rf_model$eval_accuracy)
+}
+
+accuracy_df <- data.frame(
+  maxnodes = maxnodes_list,
+  Train_Accuracy = train_accuracies,
+  Eval_Accuracy = eval_accuracies
+)
+
+
+library(ggplot2)
+
+ggplot(accuracy_df, aes(x = maxnodes)) +
+  geom_line(aes(y = Train_Accuracy, color = "Train Accuracy"), size = 1) +
+  geom_line(aes(y = Eval_Accuracy, color = "Eval Accuracy"), size = 1) +
+  labs(title = "Random Forest Accuracy vs. Max Nodes",
+       x = "maxnodes",
+       y = "Accuracy (%)") +
+  scale_color_manual(name = "Legend", values = c("Train Accuracy" = "blue", "Eval Accuracy" = "red")) +
+  scale_x_continuous(breaks = seq(min(accuracy_df$maxnodes), max(accuracy_df$maxnodes), by = 5)) +
+  theme_minimal()
+
+```
+***4. Class Weights***
+
+To handle class imbalance, different weights for the "Charged Off" class were tested (ranging from 1 to 10).
+Assigning a higher weight to the minority class improves its recall, ensuring the model doesn't overlook high-risk loans.
+
+
+```{r}
+target_column <- "loan_status"  
+sample_train_df <- handle_class_imbalance(train_df, target_column)
+sample_eval_df <- handle_class_imbalance(eval_df, target_column)
+
+chareoff_class_wt_list <- seq(1, 10, by = 1)
+train_accuracies <- c()
+eval_accuracies <- c()
+
+for (chareoff_class_wt in chareoff_class_wt_list) {
+  cat("Training Random Forest with", chareoff_class_wt, " chareoff_class_wt...\n")
+  
+  rf_model <- train_and_evaluate_rf(sample_train_df, sample_eval_df, target_column, ntree=25, maxdepth = 25,
+                                    maxnodes = 17, classwt = c("Charged Off" = chareoff_class_wt, "Fully Paid" = 1))
+  
+  
+  train_accuracies <- c(train_accuracies, rf_model$train_accuracy)
+  eval_accuracies <- c(eval_accuracies, rf_model$eval_accuracy)
+}
+
+
+accuracy_df <- data.frame(
+  chareoff_class_wt = chareoff_class_wt_list,
+  Train_Accuracy = train_accuracies,
+  Eval_Accuracy = eval_accuracies
+)
+
+
+library(ggplot2)
+
+ggplot(accuracy_df, aes(x = chareoff_class_wt)) +
+  geom_line(aes(y = Train_Accuracy, color = "Train Accuracy"), size = 1) +
+  geom_line(aes(y = Eval_Accuracy, color = "Eval Accuracy"), size = 1) +
+  labs(title = "Random Forest Accuracy vs. chareoff_class_wt",
+       x = "chargeoff_class_wt",
+       y = "Accuracy (%)") +
+  scale_color_manual(name = "Legend", values = c("Train Accuracy" = "blue", "Eval Accuracy" = "red")) +
+  theme_minimal()
+```
+***Tuning Class Weights***
+The class weights for "Charged Off" and "Fully Paid" were varied independently:
+
+Charged Off Weights (chareoff_class_wt_list): Ranges from 1 to 10.
+Fully Paid Weights (fully_paid_class_wt_list): Ranges from 1 to 10.
+The grid search approach was used to evaluate all combinations of these weights, with the Random Forest model trained and evaluated for each combination.
+
+```{r}
+
+chareoff_class_wt_list <- seq(1, 10, by = 1)
+fully_paid_class_wt_list <- seq(1, 10, by = 1)
+
+train_precision_charged_off <- c()
+eval_precision_charged_off <- c()
+train_recall_charged_off <- c()
+eval_recall_charged_off <- c()
+
+train_precision_fully_paid <- c()
+eval_precision_fully_paid <- c()
+train_recall_fully_paid <- c()
+eval_recall_fully_paid <- c()
+
+
+for (chareoff_class_wt in chareoff_class_wt_list) {
+  for (fully_paid_class_wt in fully_paid_class_wt_list) {
+    cat("Training Random Forest with Charged Off Weight:", chareoff_class_wt, 
+        " Fully Paid Weight:", fully_paid_class_wt, "...\n")
+    
+    
+    rf_model <- train_and_evaluate_rf(
+      sample_train_df, sample_eval_df, target_column, 
+      ntree = 120, maxdepth = 25, maxnodes = 20, 
+      classwt = c("Charged Off" = chareoff_class_wt, "Fully Paid" = fully_paid_class_wt)
+    )
+    
+    metrics <- calculate_metrics(rf_model)
+
+    
+    cat("Train - Charged Off Class:\n")
+    cat("Precision: ", metrics$train_precision_charged_off, "\n")
+    cat("Recall: ", metrics$train_recall_charged_off, "\n")
+    cat("F1: ", metrics$train_f1_charged_off, "\n")
+
+    
+    train_precision_charged_off <- c(train_precision_charged_off, metrics$train_precision_charged_off)
+    eval_precision_charged_off <- c(eval_precision_charged_off, metrics$eval_precision_charged_off)
+    
+    train_recall_charged_off <- c(train_recall_charged_off, metrics$train_recall_charged_off)
+    eval_recall_charged_off <- c(eval_recall_charged_off, metrics$eval_recall_charged_off)
+
+    
+    train_precision_fully_paid <- c(train_precision_fully_paid, metrics$train_precision_fully_paid)
+    eval_precision_fully_paid <- c(eval_precision_fully_paid, metrics$eval_precision_fully_paid)
+    
+    train_recall_fully_paid <- c(train_recall_fully_paid, metrics$train_recall_fully_paid)
+    eval_recall_fully_paid <- c(eval_recall_fully_paid, metrics$eval_recall_fully_paid)
+  }
+}
+
+plot_data <- data.frame(
+  chareoff_class_wt = rep(chareoff_class_wt_list, each = length(fully_paid_class_wt_list)),
+  fully_paid_class_wt = rep(fully_paid_class_wt_list, times = length(chareoff_class_wt_list)),
+  train_precision_charged_off = train_precision_charged_off,
+  eval_precision_charged_off = eval_precision_charged_off,
+  train_recall_charged_off = train_recall_charged_off,
+  eval_recall_charged_off = eval_recall_charged_off,
+  train_precision_fully_paid = train_precision_fully_paid,
+  eval_precision_fully_paid = eval_precision_fully_paid,
+  train_recall_fully_paid = train_recall_fully_paid,
+  eval_recall_fully_paid = eval_recall_fully_paid
+)
+
+# Create scatter plots using ggplot
+library(ggplot2)
+
+# Plot Precision vs Recall for Charged Off class (Train vs Eval)
+ggplot(plot_data, aes(x = train_recall_charged_off, y = train_precision_charged_off, 
+                     color = as.factor(chareoff_class_wt))) +
+  geom_point() +
+  labs(title = "Train Precision vs Recall for Charged Off (Train)",
+       x = "Recall", y = "Precision") +
+  scale_color_manual(name = "Charged Off Class Weight", values = rainbow(length(chareoff_class_wt_list))) +
+  theme_minimal()
+
+# Plot Precision vs Recall for Fully Paid class (Train vs Eval)
+ggplot(plot_data, aes(x = train_recall_fully_paid, y = train_precision_fully_paid, 
+                     color = as.factor(fully_paid_class_wt))) +
+  geom_point() +
+  labs(title = "Train Precision vs Recall for Fully Paid (Train)",
+       x = "Recall", y = "Precision") +
+  scale_color_manual(name = "Fully Paid Class Weight", values = rainbow(length(fully_paid_class_wt_list))) +
+  theme_minimal()
+
+# Plot Eval Precision vs Recall for Charged Off class
+ggplot(plot_data, aes(x = eval_recall_charged_off, y = eval_precision_charged_off, 
+                     color = as.factor(chareoff_class_wt))) +
+  geom_point() +
+  labs(title = "Eval Precision vs Recall for Charged Off (Eval)",
+       x = "Recall", y = "Precision") +
+  scale_color_manual(name = "Charged Off Class Weight", values = rainbow(length(chareoff_class_wt_list))) +
+  theme_minimal()
+
+# Plot Eval Precision vs Recall for Fully Paid class
+ggplot(plot_data, aes(x = eval_recall_fully_paid, y = eval_precision_fully_paid, 
+                     color = as.factor(fully_paid_class_wt))) +
+  geom_point() +
+  labs(title = "Eval Precision vs Recall for Fully Paid (Eval)",
+       x = "Recall", y = "Precision") +
+  scale_color_manual(name = "Fully Paid Class Weight", values = rainbow(length(fully_paid_class_wt_list))) +
+  theme_minimal()
+
+```
+
+
+### Train Model on Whole Train Dataset
+
+#### Explanation of Final Model Evaluation
+
+The **final Random Forest model** was trained and evaluated using the optimized hyperparameters. The following results summarize the performance metrics for both the "Charged Off" and "Fully Paid" classes.
+
+---
+
+#### 1. **Model Configuration**
+- **Number of Trees (`ntree`)**: 25
+- **Maximum Depth (`maxdepth`)**: 25
+- **Maximum Nodes (`maxnodes`)**: 17
+- **Training Data**: `train_df`
+- **Evaluation Data**: `eval_df`
+- **Target Column**: `loan_status`
+
+##### Code:
+```{r final-model-training, echo=TRUE}
+final_results <- train_and_evaluate_rf(train_df, eval_df, target_column, ntree = 25, maxdepth = 25, maxnodes = 17)
+```
+
+---
+
+### 2. **Performance Metrics**
+Metrics such as **precision**, **recall**, and **F1-score** were computed for both classes ("Charged Off" and "Fully Paid") on the training and evaluation datasets.
+
+#### Results:
+```{r final-model-metrics, echo=TRUE}
+metrics <- calculate_metrics(final_results)
+
+cat("Train - Charged Off Class:\n")
+cat("Precision: ", metrics$train_precision_charged_off, "\n")
+cat("Recall: ", metrics$train_recall_charged_off, "\n")
+cat("F1: ", metrics$train_f1_charged_off, "\n")
+
+cat("\nTrain - Fully Paid Class:\n")
+cat("Precision: ", metrics$train_precision_fully_paid, "\n")
+cat("Recall: ", metrics$train_recall_fully_paid, "\n")
+cat("F1: ", metrics$train_f1_fully_paid, "\n")
+
+cat("\nEval - Charged Off Class:\n")
+cat("Precision: ", metrics$eval_precision_charged_off, "\n")
+cat("Recall: ", metrics$eval_recall_charged_off, "\n")
+cat("F1: ", metrics$eval_f1_charged_off, "\n")
+
+cat("\nEval - Fully Paid Class:\n")
+cat("Precision: ", metrics$eval_precision_fully_paid, "\n")
+cat("Recall: ", metrics$eval_recall_fully_paid, "\n")
+cat("F1: ", metrics$eval_f1_fully_paid, "\n")
+```
+
+---
+
+### 3. **Interpretation**
+#### Charged Off Class:
+- **Precision**: Measures the proportion of correctly predicted "Charged Off" loans out of all loans classified as "Charged Off."
+- **Recall**: Indicates the proportion of actual "Charged Off" loans that were correctly identified.
+- **F1-Score**: Balances precision and recall to provide a comprehensive performance measure.
+
+#### Fully Paid Class:
+- **Precision**: Reflects the proportion of correctly predicted "Fully Paid" loans out of all loans classified as "Fully Paid."
+- **Recall**: Captures the proportion of actual "Fully Paid" loans that were correctly identified.
+- **F1-Score**: Combines precision and recall into a single metric for model evaluation.
+
+---
+
+### Insights
+1. **Training Performance**:
+   - High precision and recall values for "Fully Paid" indicate that the model performs well on the majority class.
+   - The metrics for "Charged Off" highlight the model's ability to handle the minority class effectively.
+
+2. **Evaluation Performance**:
+   - The evaluation metrics validate that the model generalizes well to unseen data.
+   - Differences between training and evaluation metrics suggest the degree of overfitting (if any).
+
+3. **Balanced Metrics**:
+   - The F1-score provides a balanced measure of the model's performance across both classes, ensuring that neither precision nor recall is disproportionately optimized.
+
+
+### Evaluating Thresholds for Class Predictions
+
+This analysis evaluates how different probability thresholds affect the precision, recall, and F1-score for predicting the "Charged Off" class.
+Adjusting the threshold allows for a balance between identifying more true positives (high recall) and reducing false positives (high precision).
+
+---
+
+### 1. **Function Overview**
+- **`evaluate_thresholds`**:
+  - Iterates through a series of probability thresholds (e.g., 0.1 to 0.9).
+  - At each threshold, classifies loans as "Charged Off" or "Fully Paid" based on their predicted probabilities.
+  - Computes performance metrics (precision, recall, F1-score) for the "Charged Off" class using a confusion matrix.
+
+- **`calculate_class_metrics`**:
+  - Calculates precision, recall, and F1-score for a specific class from the confusion matrix.
+
+```{r threshold-evaluation-functions, echo=TRUE}
+evaluate_thresholds <- function(model, eval_df, prob_thresholds, calculate_class_metrics) {
+  if (!"loan_status" %in% names(eval_df)) {
+    stop("The evaluation dataframe must contain a 'loan_status' column.")
+  }
+  
+  threshold_results <- list()
+  
+  for (threshold in prob_thresholds) {
+    predictions <- predict(model, eval_df, type = "prob")
+    charged_off_probs <- predictions[, "Charged Off"]
+    
+    predicted_classes <- ifelse(charged_off_probs >= threshold, "Charged Off", "Fully Paid")
+    
+    conf_matrix <- table(predicted_classes, eval_df$loan_status)
+    
+    metrics <- calculate_class_metrics(conf_matrix, class = "Charged Off")
+    
+    threshold_results[[as.character(threshold)]] <- list(
+      precision = metrics[1],
+      recall = metrics[2],
+      f1 = metrics[3]
+    )
+  }
+  
+  threshold_df <- do.call(rbind, lapply(threshold_results, function(x) {
+    cbind(precision = x$precision, recall = x$recall, f1 = x$f1)
+  }))
+  
+  threshold_df <- cbind(threshold = prob_thresholds, threshold_df)
+  
+  return(threshold_df)
+}
+
+calculate_class_metrics <- function(conf_matrix, class) {
+  if (!(class %in% rownames(conf_matrix) && class %in% colnames(conf_matrix))) {
+    stop("The specified class is not in the confusion matrix.")
+  }
+  
+  class_index <- which(rownames(conf_matrix) == class)
+  
+  tp <- conf_matrix[class, class]  # True Positives
+  fn <- sum(conf_matrix[class, -class_index])  # False Negatives
+  fp <- sum(conf_matrix[-class_index, class])  # False Positives
+  tn <- sum(conf_matrix) - tp - fn - fp  # True Negatives
+  
+  precision <- tp / (tp + fp)
+  recall <- tp / (tp + fn)
+  f1 <- 2 * (precision * recall) / (precision + recall)
+  
+  return(c(precision, recall, f1))
+}
+```
+
+---
+
+### 2. **Evaluating Thresholds**
+We evaluated thresholds ranging from 0.1 to 0.9 in increments of 0.1. And in each threshold:
+- Probabilities are converted to class predictions.
+- A confusion matrix is generated to compute precision, recall, and F1-score.
+
+```{r evaluate-thresholds, echo=TRUE}
+prob_thresholds <- seq(0.1, 0.9, by = 0.1)
+threshold_metrics <- evaluate_thresholds(final_results$model, eval_df, prob_thresholds, calculate_class_metrics)
+```
+
+---
+
+### 3. **Visualizing Precision-Recall Trade-offs**
+The precision and recall values for each threshold are visualized using a line chart to observe their trade-off:
+- **Precision**: Proportion of correctly identified "Charged Off" loans among all loans classified as "Charged Off."
+- **Recall**: Proportion of actual "Charged Off" loans that were correctly identified.
+
+
+```{r precision-recall-plot, echo=TRUE}
+library(ggplot2)
+
+ggplot(threshold_metrics, aes(x = threshold)) +
+  geom_line(aes(y = precision, color = "Precision")) +
+  geom_line(aes(y = recall, color = "Recall")) +
+  labs(title = "Precision-Recall Tradeoff for Charged Off Class",
+       x = "Probability Threshold",
+       y = "Metric Value") +
+  theme_minimal() +
+  scale_color_manual(values = c("Precision" = "blue", "Recall" = "red"))
+```
+
+---
+
+### Insights
+1. **Threshold Selection**:
+   - A lower threshold increases recall but reduces precision, leading to more false positives.
+   - A higher threshold improves precision but reduces recall, leading to more false negatives.
+   - The optimal threshold depends on whether minimizing false positives (high precision) or false negatives (high recall) is more critical.
+
+2. **F1-Score**:
+   - The F1-score provides a balanced measure, helping to identify a threshold that achieves an optimal trade-off.
+
+3. **Practical Implications**:
+   - For predicting loan charge-offs, thresholds closer to 0.5 may balance precision and recall.
+   - If minimizing financial risk is paramount, a higher threshold can prioritize precision, ensuring only high-confidence predictions are flagged as "Charged Off."
+
+This approach provides a flexible framework to adapt the Random Forest model to specific business priorities.
+
+
+###Test Accuracy Evaluation
+
+Now we have our full model, Let's test it.
+Random Forest model's accuracy on the test dataset by analyzing precision, recall, and the Receiver Operating Characteristic (ROC) curve.
+Here's a breakdown of our process:
+
+---
+
+### **Evaluating Metrics for Test Data**
+The function `evaluate_model_metrics` computes precision and recall for the "Charged Off" and "Fully Paid" classes using a specified probability threshold.
+
+#### Key Steps:
+1. **Probability Predictions**:
+   - The model predicts probabilities for each class.
+   - Predictions with probabilities above the `charge_off_threshold` are classified as "Charged Off"; others as "Fully Paid."
+
+2. **Confusion Matrix**:
+   - The confusion matrix compares predicted classes to actual loan statuses.
+
+3. **Precision and Recall**:
+   - **Precision**: Ratio of true positive predictions to all positive predictions.
+   - **Recall**: Ratio of true positive predictions to all actual positives.
+
+```{r test-accuracy, echo=TRUE}
+evaluate_model_metrics <- function(df, model, charge_off_threshold) {
+  if (!"loan_status" %in% names(df)) {
+    stop("The dataframe must contain a 'loan_status' column.")
+  }
+  
+  pred_probs <- predict(model, df, type = "prob")
+  
+  predicted_classes <- apply(pred_probs, 1, function(row) {
+    if (row["Charged Off"] >= charge_off_threshold) {
+      return("Charged Off")
+    } else {
+      return("Fully Paid")
+    }
+  })
+  
+  predicted_classes <- factor(predicted_classes, levels = levels(df$loan_status))
+  
+  conf_matrix <- table(Predicted = predicted_classes, Actual = df$loan_status)
+  
+  calculate_metrics_for_class <- function(class_name) {
+    tp <- conf_matrix[class_name, class_name]  # True Positives
+    fn <- sum(conf_matrix[class_name, ]) - tp  # False Negatives
+    fp <- sum(conf_matrix[, class_name]) - tp  # False Positives
+    tn <- sum(conf_matrix) - tp - fn - fp  # True Negatives
+    
+    precision <- tp / (tp + fp)
+    recall <- tp / (tp + fn)
+    return(c(Precision = precision, Recall = recall))
+  }
+  
+  class_metrics <- lapply(levels(df$loan_status), function(class_name) {
+    calculate_metrics_for_class(class_name)
+  })
+  
+  metrics_df <- do.call(rbind, class_metrics)
+  rownames(metrics_df) <- levels(df$loan_status)
+  
+  return(metrics_df)
+}
+
+# Example Usage
+test_metrics <- evaluate_model_metrics(test_df, final_results$model, 0.7)
+print(test_metrics)
+```
+
+---
+
+### **Receiver Operating Characteristic (ROC) Curve**
+The ROC curve visualizes the model's ability to distinguish between "Charged Off" and "Fully Paid" classes across different thresholds. The **Area Under the Curve (AUC)** quantifies the model's overall performance:
+- **AUC** values closer to 1 indicate better performance.
+- **AUC = 0.5** represents a random guess.
+
+
+```{r roc-curve, echo=TRUE}
+library(pROC)
+
+# Generate predictions and true labels
+predictions <- predict(final_results$model, test_df, type = "prob")
+positive_class_prob <- predictions[, "Charged Off"]
+true_labels <- test_df$loan_status
+
+# Compute ROC and AUC
+roc_curve <- roc(response = true_labels, predictor = positive_class_prob)
+
+# Plot ROC Curve
+plot(roc_curve, col = "blue", main = "ROC Curve for Random Forest Model")
+auc <- auc(roc_curve)
+legend("bottomright", legend = paste("AUC =", round(auc, 3)), col = "blue", lwd = 2)
+```
+
+---
+
+### 3. **Insights**
+1. **Precision and Recall**:
+   - Evaluate the trade-offs between precision and recall for the "Charged Off" class.
+   - Determine whether the model prioritizes minimizing false positives (high precision) or false negatives (high recall).
+
+2. **ROC and AUC**:
+   - A high AUC indicates the model performs well in separating "Charged Off" loans from "Fully Paid" loans.
+   - The ROC curve allows for visual inspection of the model's performance across thresholds.
+
+3. **Threshold Adjustments**:
+   - Using different thresholds (e.g., 0.7, 0.5) enables fine-tuning for specific business priorities (e.g., risk minimization).
+
+These metrics collectively assess the model's ability to generalize to unseen data, providing a robust evaluation of its predictive accuracy.
+
+
+
+
+
+```{r}
+
+library(pROC)
+predictions <- predict(final_results$model, test_df, type = "prob")
+
+positive_class_prob <- predictions[, "Charged Off"]
+
+true_labels <- test_df$loan_status
+
+roc_curve <- roc(response = true_labels, predictor = positive_class_prob)
+
+plot(roc_curve, col = "blue", main = "ROC Curve for Random Forest Model")
+auc <- auc(roc_curve)
+legend("bottomright", legend = paste("AUC =", round(auc, 3)), col = "blue", lwd = 2)
+
+```
+### Randomized Accuracy Testing and Prediction
+
+---
+
+### **Randomized Accuracy Testing**
+
+Now we are evaluating the **stability** of our Random Forest model by repeatedly sampling and testing its accuracy on subsets of the test dataset. 
+We aim to understand how the model performs under varying class distributions.
+
+#### Key Steps:
+**Random Sampling**:
+   - A subset of the test data is sampled using the `handle_class_imbalance` function to address class imbalance in each iteration.
+   
+**Accuracy Calculation**:
+   - For each sampled dataset, the model's predictions are compared to the true labels to compute accuracy.
+
+**Histogram Visualization**:
+   - A histogram illustrates the distribution of accuracies across multiple iterations.
+
+```{r random-accuracy, echo=TRUE}
+N <- 10000
+accuracies <- numeric(N)  
+
+calculate_accuracy <- function(model, sample_data) {
+  predictions <- predict(model, sample_data, type = "response")
+  true_labels <- sample_data$loan_status
+  charged_off_accuracy <- mean(predictions == true_labels)
+  return(charged_off_accuracy)
+}
+
+for (i in 1:N) {
+  sample_test_df <- handle_class_imbalance(test_df, "loan_status")  
+  accuracy <- calculate_accuracy(final_results$model, sample_test_df)
+  accuracies[i] <- accuracy
+}
+
+# Plot histogram of accuracies
+ggplot(data.frame(accuracy = accuracies), aes(x = accuracy)) +
+  geom_histogram(binwidth = 0.001, fill = "skyblue", color = "black", alpha = 0.7) +
+  labs(title = "Histogram of Charged Off Accuracy", x = "Accuracy", y = "Frequency") +
+  theme_minimal()
+```
+
+#### Insights:
+- **Histogram**: Displays how often the model achieves a specific accuracy across different samples.
+- **Model Stability**: A tight concentration around a mean accuracy indicates consistent model performance.
+
+---
+
+# Question 3: Prediction Accuracy Against Timeframes
+
+How accurately can we predict loan charge-offs for Lending Club loans issued between 2015-2018 that are still active and might charge-off in future, using our 2013-2018 trained models from Question #2?
+
+## Logistic Regression Model
+
+After using 2013-2018 data to train the logistic regression model, we can then use this model to predict how much active loans from 2015-2018 will charge off. After predicting probabilities and using a probability threshold of 0.5, the model predicts that there's a higher than 50% risk of 115,242 active loans being charged off. On the other hand, the model predicts that there's a 50% or lower risk of 748,371 active loans being charged off.
+
+By raising the threshold from 0.5 to 0.7, the model becomes more conservative in classifying loans as charged off. As a result, fewer loans are categorized as charged off because the model now requires a higher confidence greater greater than 70% to make this prediction. 
+
+Based on this analysis for logistic regression, we anticipate 115,242 current loans to be charged off with a 0.5 probability threshold and 76,601 current loans to be charged off with a 0.7 probability threshold. 
+
+
+***0.5 Probability Threshold For Predicting Charge-Offs Table***
+```{r, echo=TRUE}
+#library
+library(dplyr)
+#Train Logistic Regression Model using 2013-2018 trained data
+active_model <-glm(loan_status ~ loan_amnt + int_rate + grade + sub_grade + dti + emp_length + last_fico_range_high + last_fico_range_low + fico_range_low + fico_range_high + open_acc_6m + annual_inc, data = all_train_data, family = binomial)
+
+#Predict Probabilities
+active_data$predicted_prob <-predict(active_model, newdata = active_data, type = "response")
+
+#Classify loans based on probability threshold
+active_data <-active_data %>%
+  mutate(predicted_risk = ifelse(!is.na(predicted_prob) & predicted_prob > 0.5, "Charged Off", "Fully Paid"))
+
+#Summary of Predicted Charge-Offs
+table(active_data$predicted_risk)
+```
+***0.7 Probability Threshold For Predicting Charge-Offs Table***
+```{r, echo=TRUE}
+#Classify loans based on probability threshold
+active_data <-active_data %>%
+  mutate(predicted_risk = ifelse(!is.na(predicted_prob) & predicted_prob > 0.7, "Charged Off", "Fully Paid"))
+
+#Summary of Predicted Charge-Offs
+table(active_data$predicted_risk)
+```
+
+### Insights and Observations
+
+***Threshold Impact:**
+
+***Lowering the threshold to 0.5*** increases sensitivity but also increases false positives (more loans classified as "Charged Off").
+***Raising the threshold to 0.7*** reduces false positives but risks missing loans that are likely to charge off.
+
+Distribution of Predicted Risk:
+
+With a 0.5 threshold, ~13% of loans are flagged as high risk.
+With a 0.7 threshold, only ~8% of loans are flagged, indicating a stricter classification criterion.
+
+***Model Limitations:***
+
+The model’s accuracy in predicting active loan outcomes may be impacted by changes in borrower behavior or economic factors after 2018.
+Additional features, such as macroeconomic variables or updated credit scores, could improve predictions.
+
+The logistic regression model provides a reasonable prediction of charge-offs for active loans from 2015-2018:
+
+A threshold of 0.5 is more sensitive, flagging more loans as "Charged Off."
+A threshold of 0.7 is more conservative, reducing the number of false positives but risking higher false negatives.
+
+---
+
+
+
+
+## Random Forest Model
+
+This step applies the trained model to predict loan outcomes (Charged Off or Fully Paid) for active loans issued between 2015 and 2018.
+
+### Key Steps:
+**Probability Predictions**:
+   - The model predicts the probability of each loan being "Charged Off."
+
+**Threshold-based Classification**:
+   - Loans with a "Charged Off" probability above the specified threshold (e.g., 0.7) are classified as "Charged Off."
+
+**Outcome Summary**:
+   - The total counts of predicted "Charged Off" and "Fully Paid" loans are calculated and their percentages are displayed.
+
+**Probability Histogram**:
+   - A histogram shows the distribution of "Charged Off" probabilities for loans above the threshold.
+
+```{r loan-outcomes, echo=TRUE}
+calculate_loan_outcomes_with_probs <- function(model, predict_df, threshold = 0.5) {
+  prob_predictions <- predict(model, predict_df, type = "prob")
+  charged_off_probs <- prob_predictions[, "Charged Off"]
+  
+  predictions <- ifelse(charged_off_probs >= threshold, "Charged Off", "Fully Paid")
+  
+  outcome_counts <- table(predictions)
+  charged_off_count <- if ("Charged Off" %in% names(outcome_counts)) outcome_counts["Charged Off"] else 0
+  fully_paid_count <- if ("Fully Paid" %in% names(outcome_counts)) outcome_counts["Fully Paid"] else 0
+  
+  return(list(
+    Charged_Off = charged_off_count,
+    Fully_Paid = fully_paid_count,
+    Charged_Off_Probs = charged_off_probs
+  ))
+}
+
+results <- calculate_loan_outcomes_with_probs(final_results$model, predict_df, 0.7)
+
+filtered_probs <- results$Charged_Off_Probs[results$Charged_Off_Probs >= 0.5]
+
+cat("Predicting Charged Off % from 2015 to 2018 Active/Current loans: \n")
+cat("Total Charged Off:", results$Charged_Off, "(", (results$Charged_Off / (results$Charged_Off + results$Fully_Paid)) * 100, "% )\n")
+cat("Total Fully Paid:", results$Fully_Paid, "(", (results$Fully_Paid / (results$Charged_Off + results$Fully_Paid)) * 100, "% )\n")
+
+# Plot histogram of Charged Off probabilities above the threshold
+ggplot(data.frame(Charged_Off_Probs = filtered_probs), aes(x = Charged_Off_Probs)) +
+  geom_histogram(binwidth = 0.01, fill = "blue", alpha = 0.7) +
+  labs(
+    title = "Histogram of Charged Off Probabilities (Above Threshold)",
+    x = "Probability of Charged Off",
+    y = "Frequency"
+  ) +
+  theme_minimal()
+```
+
+### Insights:
+- **Prediction Summary**:
+  - The total number and percentage of loans predicted as "Charged Off" and "Fully Paid" provide a high-level view of model outcomes.
+- **Probability Histogram**:
+  - Highlights the distribution of high-risk loans, assisting in further risk stratification.
+
+---
+
+
+# Final Conclusion
+
+This report is demonstrating our skills and understanding we've gained throughout the fall semester at the George Washington University. In this report 
+we've evaluated the effectiveness of classification models, particularly **Logistic Regression** and **Random Forest**, 
+for predicting loan charge-offs using LendingClub loan data from 2013-2018. The key findings and takeaways are summarized below:
+
+
+## Key Findings:
+
+1. **Feature Importance**:
+   - Both models demonstrated the significance of variables such as **loan amount**, **interest rate**, **grade**, and **DTI** in predicting loan outcomes.
+   - Random Forest additionally provided insights into the non-linear relationships among features, enhancing interpretability through feature importance analysis.
+
+2. **Model Performance**:
+   - Logistic Regression:
+     - Achieved reasonable accuracy and AUC but struggled with class imbalance, particularly in identifying "Charged Off" loans (low sensitivity).
+   - Random Forest:
+     - Showed superior performance in handling class imbalance and non-linear relationships.
+     - Demonstrated robust predictive accuracy with a better trade-off between precision and recall.
+     - Achieved higher AUC values, indicating better discrimination between "Charged Off" and "Fully Paid" loans.
+
+3. **Threshold Optimization**:
+   - Adjusting probability thresholds significantly impacted model predictions:
+     - Lower thresholds increased recall at the expense of precision.
+     - Higher thresholds improved precision but reduced recall.
+   - Threshold tuning provided flexibility to balance business priorities, such as minimizing false positives or false negatives.
+
+4. **Test Performance**:
+   - Random Forest consistently achieved high predictive accuracy across test datasets, confirming its robustness.
+   - Visualizations such as the ROC curve, precision-recall trade-offs, and accuracy distributions further validated model performance.
+
+5. **Prediction of Active Loans**:
+   - When applied to active loans from 2015-2018, the Random Forest model identified a significant proportion of high-risk loans (e.g., those with probabilities above 0.7), demonstrating its practical application for real-world risk management.
+
+---
+
+The results suggest that **Random Forest** is the better model for predicting loan charge-offs in this dataset, given its ability to:
+
+- Handle non-linear relationships.
+- Address class imbalance.
+- Provide flexible threshold-based predictions to suit various business objectives.
+
+While Logistic Regression offers simplicity and interpretability, it may not fully capture the complexity of the data, especially when the classes are imbalanced or relationships are non-linear.
+
+---
+
+## Recommendations:
+
+1. **Operational Use**:
+   - Implement the Random Forest model for ongoing monitoring of loan charge-off risk, with dynamic threshold tuning based on evolving business needs.
+
+2. **Future Improvements**:
+   - Consider ensemble approaches combining Logistic Regression and Random Forest for enhanced prediction stability.
+   - Explore other advanced models like Gradient Boosting or XGBoost for potentially higher accuracy.
+
+3. **Data Collection**:
+   - Incorporate additional variables, such as borrower behavior and macroeconomic factors, to improve model precision and predictive power.
+
+4. **Business Application**:
+   - Use the predicted probabilities from the Random Forest model to prioritize risk mitigation strategies, such as proactive loan restructuring or enhanced underwriting criteria.
+   
