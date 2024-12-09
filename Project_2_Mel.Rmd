@@ -1,0 +1,237 @@
+---
+output:
+  html_document:
+    code_folding: show
+    number_sections: false
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+---
+
+```{r setup, include=F, Echo =FALSE}
+# Some of common RMD options (and the defaults) are: 
+# include=T, eval=T, echo=T, results='hide'/'asis'/'markup',..., collapse=F, warning=T, message=T, error=T, cache=T, fig.width=6, fig.height=4, fig.dim=c(6,4) #inches, fig.align='left'/'center','right', 
+knitr::opts_chunk$set(results="markup", warning = F, message = F)
+# Can globally set option for number display format.
+options(scientific=T, digits = 3) 
+# options(scipen=9, digits = 3) 
+```
+
+# Loading the Data
+
+```{r, echo=TRUE}
+#For Question #2
+#Load 2013-2015 Train Data
+train_data <-read.csv("C:\\Users\\msyag\\OneDrive\\Documents\\Intro to Data Science\\data_2013_2015_train.csv")
+
+#Convert Loan Status to Numeric Values \ 1= Charged Off 0 = Fully Paid
+train_data$loan_status <- ifelse(train_data$loan_status == "Charged Off", 1,0)
+
+#Load Test Data 2013-2015
+test_data <-read.csv("C:\\Users\\msyag\\OneDrive\\Documents\\Intro to Data Science\\data_2013_2015_test.csv")
+
+#Convert Loan Status to Numeric Values \ 1= Charged Off 0 = Fully Paid
+test_data$loan_status <- ifelse(test_data$loan_status == "Charged Off", 1,0)
+
+#Load Test Data 2016-2018
+test_data_2 <-read.csv("C:\\Users\\msyag\\OneDrive\\Documents\\Intro to Data Science\\data_2016_2018_test.csv")
+
+#Convert Loan Status to Numeric Values \ 1= Charged Off 0 = Fully Paid
+test_data_2$loan_status <- ifelse(test_data_2$loan_status == "Charged Off", 1,0)
+
+```
+
+```{r, echo=TRUE}
+#For Question #3
+#Load Active Loans Data
+active_data <-read.csv("C:\\Users\\msyag\\OneDrive\\Documents\\Intro to Data Science\\predict.csv")
+
+#Load 2013-2018 Train Data
+all_train_data <-read.csv("C:\\Users\\msyag\\OneDrive\\Documents\\Intro to Data Science\\train.csv")
+
+#Convert Loan Status to Numeric Values \ 1= Charged Off 0 = Fully Paid
+all_train_data$loan_status <- ifelse(all_train_data$loan_status == "Charged Off", 1,0)
+
+
+```
+# Question #2: How do different classification models (logistic regression and classification tree) compare in their ability to predict loan charge-offs when trained on 2013-2015 data and tested on holdout sets from 2013-2015 and 2016-2018 data?
+
+## Logistic Regression: Training the Model
+
+Based on the logistic regression model that was trained on 2013-2015 data, all predictors included in the model are statistically significant as they are less than the 0.05 significance level. During the creation of the model, it is important to note that the FICO predictors weren't included initially to reduce the amount of noise by having too many factors added in. After training the model, there are some noticeable insights from the rounded coefficients.
+
+Loan Amount: 0.13: A $1 increase in the loan amount slightly increases the likelihood of a loan charged off.
+
+Interest Rate: -0.62: Higher interest rates decrease the likelihood of charge-offs.
+
+Grade G: 5.29: Loans with Grade G are more likely to be charged off compared to grade A.
+
+Employment Length less than a Year: -0.24: Borrowers with less than one year of employment are less likely to be charged off. 
+
+```{r, echo=TRUE}
+
+#Logistic Regression Model
+log_model <-glm(loan_status ~ loan_amnt + int_rate + grade + sub_grade + dti + emp_length + annual_inc, data = train_data, family = binomial)
+
+#Summary of Model
+summary(log_model)
+
+```
+
+
+
+### Evaluate the Model Using Test Data from 2013-2015
+After evaluating the model using the test data from 2013-2015, the following can be derived:
+
+Confusion Matrix
+
+87,900 True Negatives: Correctly predicted loans that were fully paid.
+
+19,849 False Negatives: Correctly predicted loans that were charged off.
+
+529 False Positives: Loans that were charged off but incorrectly predicted as fully paid.
+
+527 True Positives: Loans that were fully paid but incorrectly charged off.
+
+
+
+Performance Metrics
+
+Accuracy 81.3%: The model correctly classifies 81.3% of the loans in this test set.
+
+Sensitivity 2.49%: The model only identifies 2.49% of charge-offs correctly showing its weakness in detecting loan charge-offs. 
+
+Specificity 99.43%: The model correctly identifies 99.43% of fully paid loans showing its strength in detecting this loan status.
+
+
+
+ROC Curve & AUC
+
+AUC 0.705: On average, the model has a 70.5% chance of distinguishing between a loan that gets charged off and one that is fully paid. Overall, this model has a moderate ability to distinguish between charged off and fully paid loans when applied to unseen data from 2013-2015. 
+
+```{r, echo=TRUE}
+
+#libraries
+library(caret)
+library(pROC)
+
+#Predict on test data
+log_predict <- predict(log_model, test_data, type = "response")
+
+#Convert Probabilities to Class 
+log_predict_class <- ifelse(log_predict > 0.5, 1, 0)
+
+#Covert Predicted and Actual to Factors with Same Levels
+log_predict_class <-factor(log_predict_class, levels = c(0,1)) # Predicted Classes
+test_data$loan_status <-factor(test_data$loan_status, levels = c(0,1)) # Actual Classes
+
+#Confusion Matrix
+con_matrix <- confusionMatrix(as.factor(log_predict_class), test_data$loan_status)
+print(con_matrix)
+
+#ROC Curve and AUC
+roc_curve <-roc(test_data$loan_status, as.numeric(log_predict))
+auc_value <- auc(roc_curve)
+print(auc_value)
+plot(roc_curve)
+
+```
+
+### Evaluating the Model Using Test Data from 2015-2018
+
+
+After evaluating the model using test data from 2015-2018, the following can be derived:
+
+Confusion Matrix
+
+60,146 True Negatives: Correctly predicted loans that were fully paid.
+
+17,415 False Negatives: Correctly predicted loans that were charged off.
+
+188 False Positives: Loans that were charged off but incorrectly predicted as fully paid.
+
+177 True Positives: Loans that were fully paid but incorrectly charged off. 
+
+
+Performance Metrics
+
+Accuracy 77.4%: The model correctly classifies 77.4% of the loans in this test set.
+
+Sensitivity 1.12%: The model only identifies 1.12% of charge-offs correctly showing its weakness in detecting loan charge-offs. 
+
+Specificity 99.69%: The model correctly identifies 99.69% of fully paid loans showing its strength in detecting this loan status.
+
+
+ROC Curve & AUC
+AUC 0.694: On average, the model has a 69.4% chance of distinguishing between a loan that gets charged off and one that is fully paid. Overall, this model has a moderate ability to distinguish between fully paid loans when applied to unseen data from 2016-2018 but could use major improvement in predicting charged off loans.  
+
+```{r, echo=TRUE}
+
+#libraries
+library(caret)
+library(pROC)
+
+#Predict on test data
+log_predict_2 <- predict(log_model, test_data_2, type = "response")
+
+#Convert Probabilities to Class 
+log_predict_class_2 <- ifelse(log_predict_2 > 0.5, 1, 0)
+
+#Covert Predicted and Actual to Factors with Same Levels
+log_predict_class_2 <-factor(log_predict_class_2, levels = c(0,1)) # Predicted Classes
+test_data_2$loan_status <-factor(test_data_2$loan_status, levels = c(0,1)) # Actual Classes
+
+#Confusion Matrix
+con_matrix_2 <- confusionMatrix(as.factor(log_predict_class_2), test_data_2$loan_status)
+print(con_matrix_2)
+
+#ROC Curve and AUC
+roc_curve_2 <-roc(test_data_2$loan_status, as.numeric(log_predict_2))
+auc_value_2 <- auc(roc_curve_2)
+print(auc_value_2)
+plot(roc_curve_2)
+
+```
+
+# 3. How accurately can we predict loan charge-offs for Lending Club loans issued between 2015-2018 that are still active and might charge-off in future, using our 2013-2018 trained models from Question #2?
+
+## Logistic Regression Model
+
+After using 2013-2018 data to train the logistic regression model, we can then use this model to predict how much active loans from 2015-2018 will charge off. After predicting probabilities and using a probability threshold of 0.5, the model predicts that there's a higher than 50% risk of 115,242 active loans being charged off. On the other hand, the model predicts that there's a 50% or lower risk of 748,371 active loans being charged off.
+
+By raising the threshold from 0.5 to 0.7, the model becomes more conservative in classifying loans as charged off. As a result, fewer loans are categorized as charged off because the model now requires a higher confidence greater greater than 70% to make this prediction. 
+
+Based on this analysis for logistic regression, we anticipate 115,242 current loans to be charged off with a 0.5 probability threshold and 76,601 current loans to be charged off with a 0.7 probability threshold. 
+
+
+### 0.5 Probabability Threshold For Predicting Charge-Offs Table
+
+```{r, echo=TRUE}
+#library
+library(dplyr)
+#Train Logistic Regression Model using 2013-2018 trained data
+active_model <-glm(loan_status ~ loan_amnt + int_rate + grade + sub_grade + dti + emp_length + last_fico_range_high + last_fico_range_low + fico_range_low + fico_range_high + open_acc_6m + annual_inc, data = all_train_data, family = binomial)
+
+#Predict Probabilities
+active_data$predicted_prob <-predict(active_model, newdata = active_data, type = "response")
+
+#Classify loans based on probability threshold
+active_data <-active_data %>%
+  mutate(predicted_risk = ifelse(!is.na(predicted_prob) & predicted_prob > 0.5, "Charged Off", "Fully Paid"))
+
+#Summary of Predicted Charge-Offs
+table(active_data$predicted_risk)
+```
+### 0.7 Probabability Threshold For Predicting Charge-Offs Table
+```{r, echo=TRUE}
+#Classify loans based on probability threshold
+active_data <-active_data %>%
+  mutate(predicted_risk = ifelse(!is.na(predicted_prob) & predicted_prob > 0.7, "Charged Off", "Fully Paid"))
+
+#Summary of Predicted Charge-Offs
+table(active_data$predicted_risk)
+```
+
