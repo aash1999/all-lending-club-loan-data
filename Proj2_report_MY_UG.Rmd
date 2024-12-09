@@ -385,6 +385,8 @@ for(col in numeric_cols) {
 par(mfrow = c(1, 1))
 
 ```
+## The provided code snippet creates histograms for each numeric column in the train_data dataset. It first identifies the numeric columns using sapply() and is.numeric(). Then, it sets up a 3x3 grid of plots using par(mfrow = c(3, 3)) to display multiple histograms on a single page. The code iterates over each numeric column using a for loop, creating a histogram with the column name as the title and x-axis label, and "lightblue" as the fill color. Finally, it resets the plotting parameters with par(mfrow = c(1, 1)). This code provides a quick visual summary of the distribution of numeric variables in the dataset.
+
 
 
 ```{r}
@@ -484,7 +486,17 @@ test_data <- create_features(test_data, poly_degree = 2)
 active_data <- create_features(active_data, poly_degree = 2)
 
 ```
+## we performed data cleaning and feature engineering to prepare the dataset for predictive modeling. Below are the steps and their significance:
 
+Data Cleaning:
+
+Missing Value Handling: Rows with missing loan_status values were removed as they are essential for target prediction. For numeric columns, missing values were imputed with the median to maintain the dataset's distribution. For categorical columns, missing values were imputed with the mode, ensuring that no important categorical information was lost.
+Summary: After cleaning, all datasets retained their original number of rows, indicating that loan_status was complete. Any missing numeric or categorical data was successfully imputed.
+Feature Engineering:
+
+Interaction Terms: We created new features by multiplying pairs of numeric columns. This helps the model capture the combined effect of two features, which may be predictive of loan_status.
+Polynomial Features: Higher-order terms (e.g., squares, cubes) of numeric features were added to model non-linear relationships. This was done up to the second degree.
+Summary: For each dataset, the original 10 features were expanded to include 55 new features, resulting in a total of 69 features per dataset. This significantly enriched the feature space, potentially improving model performance.
 
 
 ```{R}
@@ -570,7 +582,6 @@ improved_model <- train(
 )
 
 ```
-
 
 ```{r}
 # 5. Make predictions
