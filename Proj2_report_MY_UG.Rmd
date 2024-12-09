@@ -385,7 +385,7 @@ for(col in numeric_cols) {
 par(mfrow = c(1, 1))
 
 ```
-## The provided code snippet creates histograms for each numeric column in the train_data dataset. It first identifies the numeric columns using sapply() and is.numeric(). Then, it sets up a 3x3 grid of plots using par(mfrow = c(3, 3)) to display multiple histograms on a single page. The code iterates over each numeric column using a for loop, creating a histogram with the column name as the title and x-axis label, and "lightblue" as the fill color. Finally, it resets the plotting parameters with par(mfrow = c(1, 1)). This code provides a quick visual summary of the distribution of numeric variables in the dataset.
+The provided code snippet creates histograms for each numeric column in the train_data dataset. It first identifies the numeric columns using sapply() and is.numeric(). Then, it sets up a 3x3 grid of plots using par(mfrow = c(3, 3)) to display multiple histograms on a single page. The code iterates over each numeric column using a for loop, creating a histogram with the column name as the title and x-axis label, and "lightblue" as the fill color. Finally, it resets the plotting parameters with par(mfrow = c(1, 1)). This code provides a quick visual summary of the distribution of numeric variables in the dataset.
 
 
 
@@ -486,17 +486,22 @@ test_data <- create_features(test_data, poly_degree = 2)
 active_data <- create_features(active_data, poly_degree = 2)
 
 ```
-## we performed data cleaning and feature engineering to prepare the dataset for predictive modeling. Below are the steps and their significance:
+Missing Data Handling:
+We developed a custom missing_data function to preprocess the dataset:
 
-Data Cleaning:
-
-Missing Value Handling: Rows with missing loan_status values were removed as they are essential for target prediction. For numeric columns, missing values were imputed with the median to maintain the dataset's distribution. For categorical columns, missing values were imputed with the mode, ensuring that no important categorical information was lost.
-Summary: After cleaning, all datasets retained their original number of rows, indicating that loan_status was complete. Any missing numeric or categorical data was successfully imputed.
+Rows with missing values in the loan_status column were removed.
+For numeric columns, missing values were imputed with the median of the respective column.
+For categorical columns, missing values were imputed using the mode (most frequent value) of the column. This ensured a complete dataset with no missing values, maintaining the original data size as no rows required removal.
 Feature Engineering:
+We implemented a create_features function to enrich the dataset:
 
-Interaction Terms: We created new features by multiplying pairs of numeric columns. This helps the model capture the combined effect of two features, which may be predictive of loan_status.
-Polynomial Features: Higher-order terms (e.g., squares, cubes) of numeric features were added to model non-linear relationships. This was done up to the second degree.
-Summary: For each dataset, the original 10 features were expanded to include 55 new features, resulting in a total of 69 features per dataset. This significantly enriched the feature space, potentially improving model performance.
+Interaction Terms: Created pairwise interaction features for numeric columns to capture relationships between variables.
+Polynomial Features: Generated polynomial terms of degree 2 for numeric columns, capturing non-linear relationships.
+This resulted in significant expansion of the feature set:
+
+For the training dataset, 55 new features were added, increasing the total from 10 to 69.
+For the active dataset, 2,090 new features were generated, bringing the total to 2,159.
+These steps aimed to improve the predictive power of the model by providing it with a richer and more diverse feature set.
 
 
 ```{R}
@@ -545,6 +550,26 @@ if("issue_d" %in% colnames(test_data)) {
 }
 
 ```
+1. Handling Missing Values
+Objective: Ensure no missing values remain in numeric columns to avoid disruptions during model training.
+Process:
+For each numeric column in the training and testing datasets, missing values were replaced with the median of the respective column in the training dataset. This ensures consistency and avoids data leakage.
+2. Encoding the Target Variable
+Objective: Prepare the target variable (loan_status) for classification tasks.
+Process:
+Converted loan_status to a numeric type to remove formatting issues.
+Recoded loan_status as a factor with meaningful labels:
+Fully Paid (class 0)
+Charged-Off (class 1)
+3. Removing Unnecessary Columns
+Objective: Eliminate irrelevant or redundant features to simplify the dataset.
+Process:
+Checked for the presence of the issue_d column, which may not contribute to the model's performance.
+Removed the issue_d column from both training and testing datasets to streamline data processing.
+4. Results:
+Missing values were effectively handled, ensuring a complete dataset.
+The target variable was prepared for binary classification with clear labels.
+Redundant columns were identified and removed, reducing potential noise in the model.
 
 
 ```{r}
@@ -582,6 +607,14 @@ improved_model <- train(
 )
 
 ```
+Cross-Validation: Used 5-fold cross-validation with ROC AUC as the metric and applied downsampling to address class imbalance in loan_status.
+
+Hyperparameter Tuning: Created a grid to optimize alpha (L1/L2 regularization balance) and lambda (regularization strength) for the glmnet model.
+
+Model Training: Trained a regularized logistic regression (glmnet) with binomial family for binary classification, evaluating performance using ROC AUC across hyperparameter combinations.
+
+Outcome: Developed a robust model with enhanced generalizability through cross-validation and tuning.
+
 
 ```{r}
 # 5. Make predictions
@@ -628,34 +661,28 @@ cat("F1 Score:", round(2 * (improved_cm$byClass['Sensitivity'] * improved_cm$byC
 
 ```
 
-# Evaluating the Model Using Test Data from 2015-2018
+Predictions and Threshold Optimization: Predictions were made on the test dataset, and the optimal threshold for classification was determined using the ROC curve to balance sensitivity and specificity effectively.
 
+Confusion Matrix and Metrics:
 
-After evaluating the model using test data from 2015-2018, the following can be derived:
+The confusion matrix showed Accuracy at 85.7%, with Sensitivity (84.5%) and Specificity (90.9%), indicating strong performance in identifying both Fully Paid and Charged Off loans.
+The model's Precision for predicting the Fully Paid class was 97.6%, confirming its reliability in minimizing false positives.
+AUC Score: The model achieved an AUC of 0.936, demonstrating excellent discrimination capability between the two classes.
 
-Confusion Matrix
+Feature Importance and Visualization: The ROC curve was plotted to illustrate model performance, and the top 10 most important features contributing to predictions were identified and visualized.
 
-60,134 True Negatives: Correctly predicted loans that were fully paid.
+Summary: The improved model provided robust performance metrics, validating its effectiveness for loan status classification tasks.
 
-17,395 False Negatives: Correctly predicted loans that were charged off.
+Visualization:
 
-200 False Positives: Loans that were charged off but incorrectly predicted as fully paid.
-
-197 True Positives: Loans that were fully paid but incorrectly charged off. 
-
-
-Performance Metrics
-
-Accuracy 77.4%: The model correctly classifies 77.4% of the loans in this test set.
-
-Sensitivity 1.12%: The model only identifies 1.12% of actual charge-offs correctly. THIS MODEL IS POOR AT DETECTING LOAN CHARGE-OFFS.
-
-Specificity 99.67%: The model correctly identifies 99.67% of fully paid loans.
+The ROC curve was plotted to visualize the trade-off between true positive and false positive rates.
+A feature importance chart was generated, highlighting the top 10 features contributing to the model's predictions.
+Key Findings: The improved model demonstrated strong classification performance with balanced sensitivity and specificity, showcasing its effectiveness in predicting loan_status.
 
 
 
-ROC Curve & AUC
-AUC 0.694: On average, the model has a 69.4% chance of distinguishing between a loan that gets charged off and one that is fully paid. Overall, this model has a moderate ability to distinguish between fully paid loans when applied to unseen data from 2016-2018 but could use improvement in predicting charged off loans.  
+
+
 
 ```{r, echo=TRUE}
 
@@ -684,6 +711,7 @@ print(auc_value_2)
 plot(roc_curve_2)
 
 ```
+
 ```{r}
 # Examine the structure and missing values
 str(test_data_2)
@@ -763,7 +791,11 @@ print("Best Tuning Parameters:")
 print(tuned_model$bestTune)
 
 ```
+Data Cleaning and Feature Engineering: Missing values for key predictors (dti and open_acc_6m) were imputed using their respective medians, and rows with remaining missing values were removed. Feature interactions and polynomial transformations were introduced for loan_amnt, int_rate, and dti. Categorical variables were encoded into dummy variables, and all numeric predictors were normalized to improve model performance.
 
+Cross-Validation and Hyperparameter Tuning: A 5-fold cross-validation was performed using glmnet to identify the best combination of alpha (elastic net mixing parameter) and lambda (regularization strength). The parameter grid spanned values of alpha (0, 0.5, 1) and logarithmic scaling of lambda.
+
+Results: After evaluating multiple combinations, the best tuning parameters were determined as alpha = 0.5 and lambda = 0.0001. This model was then trained on the full training set to optimize predictions.
 
 ```{r}
 # Make predictions
@@ -810,6 +842,18 @@ print(importance)
 
 
 ```
+Confusion Matrix: The confusion matrix shows that the model successfully predicted 58,227 instances of "Fully.Paid" and 14,760 instances of "Charged.Off". The model achieved an accuracy of 93.6%, significantly outperforming the baseline accuracy of 77.4%.
+
+Performance Metrics: Key performance metrics include:
+
+Accuracy: 93.6%
+Sensitivity: 96.4% (true positive rate for "Fully.Paid")
+Specificity: 83.8% (true negative rate for "Charged.Off")
+Precision: 95.3% (positive predictive value)
+AUC: 0.968, indicating excellent model discrimination between the two classes.
+Variable Importance: The analysis reveals the most influential variables in the model's decision-making process, which are critical for understanding the factors driving loan repayment predictions.
+
+These results demonstrate that the tuned model performs well in classifying loan statuses and can be used for reliable decision-making in financial applications.
 
 
 
